@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  BarChart3, Store, UtensilsCrossed, ShoppingCart, Tag,
+  BarChart3, Building2, Store, UtensilsCrossed, ShoppingCart, Tag,
   ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -11,6 +11,7 @@ import { useState } from 'react';
 
 const navItems = [
   { href: '/admin', label: 'Аналітика', icon: BarChart3 },
+  { href: '/admin/brands', label: 'Бренди', icon: Building2 },
   { href: '/admin/branches', label: 'Філіали', icon: Store },
   {
     label: 'Меню', icon: UtensilsCrossed,

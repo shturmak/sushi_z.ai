@@ -164,6 +164,37 @@ export interface Analytics {
   revenueByCategory?: { category: string; revenue: number }[];
 }
 
+export interface Brand {
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl: string | null;
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  heroBannerUrl: string | null;
+  promoBannerUrls: string | null;
+  description: string | null;
+  slogan: string | null;
+  isActive: boolean;
+  branchCount?: number;
+  productCount?: number;
+  orderCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BrandFormData {
+  name: string;
+  slug: string;
+  description: string;
+  slogan: string;
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  isActive: boolean;
+}
+
 // API Response wrapper
 export interface ApiSuccessResponse<T = unknown> {
   success: true;
