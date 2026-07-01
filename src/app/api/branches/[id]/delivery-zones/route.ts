@@ -1,17 +1,19 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { apiSuccess, apiNotFound } from '@/lib/api-response';
+import { apiSuccess, apiError } from '@/lib/api-response';
+import { withTenant, tenantCatch } from '@/lib/tenant-middleware';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const ctx = await withTenant(request);
     const { id } = await params;
 
     const branch = await db.branch.findUnique({ where: { id } });
-    if (!branch) {
-      return apiNotFound('Branch not found');
+    if (!branch || branch.brandId !== ctx.brandId) {
+      return apiError('FORBIDDEN', 'Resource not found', 404);
     }
 
     const zones = await db.deliveryZone.findMany({
@@ -20,8 +22,7 @@ export async function GET(
     });
 
     return apiSuccess(zones);
-  } catch (error) {
-    console.error('List delivery zones error:', error);
-    return apiSuccess([]);
+  } catch (err) {
+    return tenantCatch(err);
   }
 }

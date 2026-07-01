@@ -1,25 +1,25 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { apiSuccess, apiError } from '@/lib/api-response';
-import { requireAdmin } from '@/lib/auth-middleware';
+import { withTenantAdmin, tenantCatch } from '@/lib/tenant-middleware';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    await requireAdmin();
+    const ctx = await withTenantAdmin(request);
     const products = await db.product.findMany({
+      where: { brandId: ctx.brandId },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       include: { category: { select: { name: true } }, branch: { select: { name: true } }, optionGroups: { include: { options: true } } },
     });
     return apiSuccess(products);
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    return apiError('INTERNAL_ERROR', 'Failed', 500);
+  } catch (err) {
+    return tenantCatch(err);
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin();
+    const ctx = await withTenantAdmin(request);
     const body = await request.json();
     const { categoryId, branchId, name, slug, description, price, weight, calories, isAvailable, sortOrder, optionGroups } = body;
 
@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
 
     const product = await db.product.create({
       data: {
+        brandId: ctx.brandId,
         categoryId, branchId: branchId || null, name, slug, description,
         price, weight, calories, isAvailable: isAvailable ?? true, sortOrder: sortOrder ?? 0,
       },
@@ -51,9 +52,7 @@ export async function POST(request: NextRequest) {
 
     const created = await db.product.findUnique({ where: { id: product.id }, include: { optionGroups: { include: { options: true } } } });
     return apiSuccess(created, 'Product created', 201);
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    console.error('Create product error:', error);
-    return apiError('INTERNAL_ERROR', 'Failed', 500);
+  } catch (err) {
+    return tenantCatch(err);
   }
 }

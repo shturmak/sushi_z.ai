@@ -15,6 +15,16 @@ const WORK_SCHEDULE = JSON.stringify({
 async function seed() {
   console.log('🌱 Seeding database...');
 
+  // ─── BRAND ──────────────────────────────────────
+  const brand = await prisma.brand.create({
+    data: {
+      name: 'SushiChain',
+      slug: 'sushichain',
+      description: 'Найкраща суши-доставка Києва',
+      isActive: true,
+    },
+  });
+
   // ─── USERS ─────────────────────────────────────
   const admin = await prisma.user.create({
     data: {
@@ -24,6 +34,7 @@ async function seed() {
       firstName: 'Олексій',
       lastName: 'Шеф',
       role: 'admin',
+      brandId: brand.id,
     },
   });
 
@@ -42,6 +53,7 @@ async function seed() {
   await prisma.loyaltyAccount.create({
     data: {
       userId: customer.id,
+      brandId: brand.id,
       balance: 350,
       lifetime: 2450,
       tier: 'silver',
@@ -79,6 +91,7 @@ async function seed() {
   // ─── BRANCHES ─────────────────────────────────
   const branch1 = await prisma.branch.create({
     data: {
+      brandId: brand.id,
       name: 'СушіМастер Центр',
       slug: 'center',
       address: 'вул. Хрещатик, 22, Київ',
@@ -95,6 +108,7 @@ async function seed() {
 
   const branch2 = await prisma.branch.create({
     data: {
+      brandId: brand.id,
       name: 'СушіМастер Оболонь',
       slug: 'obolon',
       address: 'вул. Героя Сталіна, 10, Київ',
@@ -144,12 +158,12 @@ async function seed() {
 
   // ─── CATEGORIES ───────────────────────────────
   const categories = await Promise.all([
-    prisma.category.create({ data: { branchId: branch1.id, name: 'Роли', slug: 'rolls', description: 'Найкращі роли міста', sortOrder: 1 } }),
-    prisma.category.create({ data: { branchId: branch1.id, name: 'Сети', slug: 'sets', description: 'Комплексні обіди та сети', sortOrder: 2 } }),
-    prisma.category.create({ data: { branchId: branch1.id, name: 'Суші', slug: 'sushi', description: 'Класичні та фірмові суші', sortOrder: 3 } }),
-    prisma.category.create({ data: { branchId: branch1.id, name: 'Гарячі страви', slug: 'hot', description: 'Рамен, темпура, вок', sortOrder: 4 } }),
-    prisma.category.create({ data: { branchId: branch1.id, name: 'Напої', slug: 'drinks', description: 'Чай, лимонад, саке', sortOrder: 5 } }),
-    prisma.category.create({ data: { branchId: branch1.id, name: 'Десерти', slug: 'desserts', description: 'Моті, тирамісу, морозиво', sortOrder: 6 } }),
+    prisma.category.create({ data: { brandId: brand.id, branchId: branch1.id, name: 'Роли', slug: 'rolls', description: 'Найкращі роли міста', sortOrder: 1 } }),
+    prisma.category.create({ data: { brandId: brand.id, branchId: branch1.id, name: 'Сети', slug: 'sets', description: 'Комплексні обіди та сети', sortOrder: 2 } }),
+    prisma.category.create({ data: { brandId: brand.id, branchId: branch1.id, name: 'Суші', slug: 'sushi', description: 'Класичні та фірмові суші', sortOrder: 3 } }),
+    prisma.category.create({ data: { brandId: brand.id, branchId: branch1.id, name: 'Гарячі страви', slug: 'hot', description: 'Рамен, темпура, вок', sortOrder: 4 } }),
+    prisma.category.create({ data: { brandId: brand.id, branchId: branch1.id, name: 'Напої', slug: 'drinks', description: 'Чай, лимонад, саке', sortOrder: 5 } }),
+    prisma.category.create({ data: { brandId: brand.id, branchId: branch1.id, name: 'Десерти', slug: 'desserts', description: 'Моті, тирамісу, морозиво', sortOrder: 6 } }),
   ]);
 
   // ─── PRODUCTS ─────────────────────────────────
@@ -257,6 +271,7 @@ async function seed() {
   for (const p of productsData) {
     const product = await prisma.product.create({
       data: {
+        brandId: brand.id,
         categoryId: p.categoryId,
         branchId: branch1.id,
         name: p.name,
@@ -297,6 +312,7 @@ async function seed() {
   // ─── PROMOTIONS ───────────────────────────────
   const promoWelcome = await prisma.promotion.create({
     data: {
+      brandId: brand.id,
       code: 'WELCOME20',
       name: 'Перший замовлення -20%',
       description: 'Знижка 20% на перше замовлення',
@@ -313,6 +329,7 @@ async function seed() {
 
   await prisma.promotion.create({
     data: {
+      brandId: brand.id,
       code: 'FREEDELIVERY',
       name: 'Безкоштовна доставка',
       description: 'Безкоштовна доставка при замовленні від 500₴',
@@ -329,6 +346,7 @@ async function seed() {
 
   await prisma.promotion.create({
     data: {
+      brandId: brand.id,
       code: 'SUSHI100',
       name: '100₴ знижка',
       description: 'Знижка 100₴ на замовлення від 600₴',
@@ -347,6 +365,7 @@ async function seed() {
   const order1 = await prisma.order.create({
     data: {
       orderNumber: '#1001',
+      brandId: brand.id,
       userId: customer.id,
       branchId: branch1.id,
       type: OrderType.delivery,
@@ -411,6 +430,7 @@ async function seed() {
   const order2 = await prisma.order.create({
     data: {
       orderNumber: '#1002',
+      brandId: brand.id,
       userId: customer.id,
       branchId: branch1.id,
       type: OrderType.pickup,
@@ -450,6 +470,7 @@ async function seed() {
   const order3 = await prisma.order.create({
     data: {
       orderNumber: '#1003',
+      brandId: brand.id,
       userId: customer.id,
       branchId: branch1.id,
       type: OrderType.delivery,
@@ -487,7 +508,7 @@ async function seed() {
   });
 
   // ─── LOYALTY TRANSACTIONS ─────────────────────
-  const loyalty = await prisma.loyaltyAccount.findUnique({ where: { userId: customer.id } });
+  const loyalty = await prisma.loyaltyAccount.findUnique({ where: { userId_brandId: { userId: customer.id, brandId: brand.id } } });
   if (loyalty) {
     await prisma.loyaltyTransaction.createMany({
       data: [
@@ -517,6 +538,7 @@ async function seed() {
   const cart = await prisma.cart.create({
     data: {
       userId: customer.id,
+      brandId: brand.id,
       branchId: branch1.id,
     },
   });
@@ -531,7 +553,8 @@ async function seed() {
   });
 
   console.log('✅ Seed completed!');
-  console.log(`  Admin: ${admin.email} / 12345678`);
+  console.log(`  Brand: ${brand.name} (${brand.id})`);
+  console.log(`  Admin: ${admin.email} / 12345678 (brandId: ${brand.id})`);
   console.log(`  Customer: ${customer.email} / 12345678`);
   console.log(`  Branches: ${branch1.name}, ${branch2.name}`);
 }

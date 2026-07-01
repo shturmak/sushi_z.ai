@@ -1,14 +1,14 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { apiSuccess, apiError, apiNotFound, apiUnauthorized } from '@/lib/api-response';
-import { requireAuth } from '@/lib/auth-middleware';
+import { apiSuccess, apiError, apiNotFound } from '@/lib/api-response';
+import { withTenantAuth, tenantCatch } from '@/lib/tenant-middleware';
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authUser = await requireAuth();
+    const ctx = await withTenantAuth(request);
     const { id } = await params;
     const body = await request.json();
     const { quantity } = body;
@@ -17,7 +17,9 @@ export async function PUT(
       return apiError('VALIDATION_ERROR', 'Valid quantity is required');
     }
 
-    const cart = await db.cart.findUnique({ where: { userId: authUser.userId } });
+    const cart = await db.cart.findUnique({
+      where: { userId_brandId: { userId: ctx.user.userId, brandId: ctx.brandId } },
+    });
     if (!cart) {
       return apiError('NO_CART', 'Cart does not exist', 404);
     }
@@ -58,22 +60,22 @@ export async function PUT(
     });
 
     return apiSuccess(updated, 'Cart item updated');
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    console.error('Update cart item error:', error);
-    return apiError('INTERNAL_ERROR', 'Failed to update cart item', 500);
+  } catch (err) {
+    return tenantCatch(err);
   }
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authUser = await requireAuth();
+    const ctx = await withTenantAuth(request);
     const { id } = await params;
 
-    const cart = await db.cart.findUnique({ where: { userId: authUser.userId } });
+    const cart = await db.cart.findUnique({
+      where: { userId_brandId: { userId: ctx.user.userId, brandId: ctx.brandId } },
+    });
     if (!cart) {
       return apiError('NO_CART', 'Cart does not exist', 404);
     }
@@ -89,9 +91,7 @@ export async function DELETE(
     await db.cartItem.delete({ where: { id } });
 
     return apiSuccess(null, 'Cart item removed');
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    console.error('Delete cart item error:', error);
-    return apiError('INTERNAL_ERROR', 'Failed to remove cart item', 500);
+  } catch (err) {
+    return tenantCatch(err);
   }
 }

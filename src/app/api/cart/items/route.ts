@@ -1,11 +1,11 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { apiSuccess, apiError, apiUnauthorized } from '@/lib/api-response';
-import { requireAuth } from '@/lib/auth-middleware';
+import { apiSuccess, apiError } from '@/lib/api-response';
+import { withTenantAuth, tenantCatch } from '@/lib/tenant-middleware';
 
 export async function POST(request: NextRequest) {
   try {
-    const authUser = await requireAuth();
+    const ctx = await withTenantAuth(request);
     const body = await request.json();
     const { productId, quantity, selectedOptions } = body;
 
@@ -13,7 +13,9 @@ export async function POST(request: NextRequest) {
       return apiError('VALIDATION_ERROR', 'productId and valid quantity are required');
     }
 
-    const cart = await db.cart.findUnique({ where: { userId: authUser.userId } });
+    const cart = await db.cart.findUnique({
+      where: { userId_brandId: { userId: ctx.user.userId, brandId: ctx.brandId } },
+    });
     if (!cart) {
       return apiError('NO_CART', 'Cart does not exist. Create a cart first.', 404);
     }
@@ -22,7 +24,7 @@ export async function POST(request: NextRequest) {
       where: { id: productId },
     });
 
-    if (!product || !product.isAvailable) {
+    if (!product || !product.isAvailable || product.brandId !== ctx.brandId) {
       return apiError('NOT_FOUND', 'Product not found or unavailable', 404);
     }
 
@@ -51,9 +53,7 @@ export async function POST(request: NextRequest) {
     });
 
     return apiSuccess(cartItem, 'Item added to cart', 201);
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    console.error('Add cart item error:', error);
-    return apiError('INTERNAL_ERROR', 'Failed to add item to cart', 500);
+  } catch (err) {
+    return tenantCatch(err);
   }
 }

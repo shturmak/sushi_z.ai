@@ -42,12 +42,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const loyaltyAccount = await db.loyaltyAccount.create({
-      data: {
-        userId: user.id,
-      },
-    });
-
     const accessToken = await generateAccessToken({
       userId: user.id,
       role: user.role,
@@ -77,10 +71,6 @@ export async function POST(request: NextRequest) {
           firstName: user.firstName,
           lastName: user.lastName,
           role: user.role,
-        },
-        loyalty: {
-          balance: loyaltyAccount.balance,
-          tier: loyaltyAccount.tier,
         },
         accessToken,
         refreshToken,

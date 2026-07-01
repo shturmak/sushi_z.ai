@@ -1,28 +1,26 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { apiSuccess, apiError, apiUnauthorized } from '@/lib/api-response';
-import { requireAuth } from '@/lib/auth-middleware';
+import { apiSuccess, apiError } from '@/lib/api-response';
+import { withTenantAuth, tenantCatch } from '@/lib/tenant-middleware';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const authUser = await requireAuth();
+    const ctx = await withTenantAuth(request);
 
     const addresses = await db.userAddress.findMany({
-      where: { userId: authUser.userId },
+      where: { userId: ctx.user.userId, brandId: ctx.brandId },
       orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
     });
 
     return apiSuccess(addresses);
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    console.error('List addresses error:', error);
-    return apiUnauthorized();
+  } catch (err) {
+    return tenantCatch(err);
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const authUser = await requireAuth();
+    const ctx = await withTenantAuth(request);
     const body = await request.json();
     const { label, street, building, apartment, floor, entrance, comment, latitude, longitude, isDefault } = body;
 
@@ -32,14 +30,15 @@ export async function POST(request: NextRequest) {
 
     if (isDefault) {
       await db.userAddress.updateMany({
-        where: { userId: authUser.userId, isDefault: true },
+        where: { userId: ctx.user.userId, brandId: ctx.brandId, isDefault: true },
         data: { isDefault: false },
       });
     }
 
     const address = await db.userAddress.create({
       data: {
-        userId: authUser.userId,
+        userId: ctx.user.userId,
+        brandId: ctx.brandId,
         label: label || null,
         street,
         building: building || null,
@@ -54,9 +53,7 @@ export async function POST(request: NextRequest) {
     });
 
     return apiSuccess(address, 'Address created', 201);
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    console.error('Create address error:', error);
-    return apiError('INTERNAL_ERROR', 'Failed to create address', 500);
+  } catch (err) {
+    return tenantCatch(err);
   }
 }

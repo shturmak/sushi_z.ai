@@ -1,14 +1,14 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { apiSuccess, apiError, apiUnauthorized, apiNotFound } from '@/lib/api-response';
-import { requireAuth } from '@/lib/auth-middleware';
+import { apiSuccess, apiError, apiNotFound } from '@/lib/api-response';
+import { withTenantAuth, tenantCatch } from '@/lib/tenant-middleware';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const authUser = await requireAuth();
+    const ctx = await withTenantAuth(request);
 
     const cart = await db.cart.findUnique({
-      where: { userId: authUser.userId },
+      where: { userId_brandId: { userId: ctx.user.userId, brandId: ctx.brandId } },
       include: {
         branch: true,
         items: {
@@ -32,16 +32,14 @@ export async function GET() {
       totalItems,
       subtotal,
     });
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    console.error('Get cart error:', error);
-    return apiUnauthorized();
+  } catch (err) {
+    return tenantCatch(err);
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const authUser = await requireAuth();
+    const ctx = await withTenantAuth(request);
     const body = await request.json();
     const { branchId } = body;
 
@@ -49,37 +47,41 @@ export async function POST(request: NextRequest) {
       return apiError('VALIDATION_ERROR', 'branchId is required');
     }
 
+    // Verify branch belongs to current brand
     const branch = await db.branch.findUnique({ where: { id: branchId } });
-    if (!branch) {
+    if (!branch || branch.brandId !== ctx.brandId) {
       return apiNotFound('Branch not found');
     }
 
-    const existing = await db.cart.findUnique({ where: { userId: authUser.userId } });
+    const existing = await db.cart.findUnique({
+      where: { userId_brandId: { userId: ctx.user.userId, brandId: ctx.brandId } },
+    });
     if (existing) {
       return apiError('CONFLICT', 'Cart already exists. Clear it first or use the existing one.', 409);
     }
 
     const cart = await db.cart.create({
       data: {
-        userId: authUser.userId,
+        userId: ctx.user.userId,
+        brandId: ctx.brandId,
         branchId,
       },
       include: { branch: true, items: true },
     });
 
     return apiSuccess(cart, 'Cart created', 201);
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    console.error('Create cart error:', error);
-    return apiError('INTERNAL_ERROR', 'Failed to create cart', 500);
+  } catch (err) {
+    return tenantCatch(err);
   }
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   try {
-    const authUser = await requireAuth();
+    const ctx = await withTenantAuth(request);
 
-    const cart = await db.cart.findUnique({ where: { userId: authUser.userId } });
+    const cart = await db.cart.findUnique({
+      where: { userId_brandId: { userId: ctx.user.userId, brandId: ctx.brandId } },
+    });
     if (!cart) {
       return apiSuccess(null, 'No cart to clear');
     }
@@ -88,9 +90,7 @@ export async function DELETE() {
     await db.cart.delete({ where: { id: cart.id } });
 
     return apiSuccess(null, 'Cart cleared');
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    console.error('Clear cart error:', error);
-    return apiUnauthorized();
+  } catch (err) {
+    return tenantCatch(err);
   }
 }

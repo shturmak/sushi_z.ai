@@ -1,20 +1,27 @@
+import { NextRequest } from 'next/server';
+import { db } from '@/lib/db';
 import { apiSuccess, apiError } from '@/lib/api-response';
-import { requireAuth } from '@/lib/auth-middleware';
+import { withTenantAuth, tenantCatch } from '@/lib/tenant-middleware';
 import { cancelOrder } from '@/domain/order.service';
 
 export async function POST(
-  _request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authUser = await requireAuth();
+    const ctx = await withTenantAuth(request);
     const { id } = await params;
-    const result = await cancelOrder(id, authUser.userId);
+
+    // Verify order belongs to the brand
+    const order = await db.order.findUnique({ where: { id } });
+    if (!order || order.brandId !== ctx.brandId) {
+      return apiError('FORBIDDEN', 'Resource not found', 404);
+    }
+
+    const result = await cancelOrder(id, ctx.user.userId);
     if (!result.success && result.error) return apiError('CANCEL_FAILED', result.error);
     return apiSuccess(null, 'Order cancelled');
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    console.error('Cancel order error:', error);
-    return apiError('INTERNAL_ERROR', 'Failed to cancel order', 500);
+  } catch (err) {
+    return tenantCatch(err);
   }
 }

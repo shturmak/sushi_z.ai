@@ -1,16 +1,15 @@
-import { db } from '@/lib/db';
+import { NextRequest } from 'next/server';
 import { apiSuccess, apiError } from '@/lib/api-response';
-import { requireAdmin } from '@/lib/auth-middleware';
+import { withTenantAdmin, tenantCatch } from '@/lib/tenant-middleware';
 import { getAdminAnalytics } from '@/domain/analytics.service';
+import type { TenantContext } from '@/lib/tenant';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    await requireAdmin();
-    const analytics = await getAdminAnalytics();
+    const ctx: TenantContext = await withTenantAdmin(request);
+    const analytics = await getAdminAnalytics(ctx);
     return apiSuccess(analytics);
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    console.error('Analytics error:', error);
-    return apiError('INTERNAL_ERROR', 'Failed to fetch analytics', 500);
+  } catch (err) {
+    return tenantCatch(err);
   }
 }

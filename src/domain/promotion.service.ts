@@ -3,10 +3,12 @@
 // ============================================================
 
 import { db } from '@/lib/db';
+import type { TenantContext } from '@/lib/tenant';
 
-export async function validatePromotion(code: string, subtotal: number) {
+export async function validatePromotion(ctx: TenantContext, code: string, subtotal: number) {
   const promo = await db.promotion.findUnique({ where: { code } });
   if (!promo) return { valid: false as const, error: 'Промокод не знайдено' };
+  if (promo.brandId !== ctx.brandId) return { valid: false as const, error: 'Промокод не знайдено' };
 
   const now = new Date();
   if (promo.status !== 'active')
@@ -37,10 +39,15 @@ export async function validatePromotion(code: string, subtotal: number) {
   };
 }
 
-export async function getActivePromotions() {
+export async function getActivePromotions(ctx: TenantContext) {
   const now = new Date();
   return db.promotion.findMany({
-    where: { status: 'active', startDate: { lte: now }, endDate: { gte: now } },
+    where: {
+      brandId: ctx.brandId,
+      status: 'active',
+      startDate: { lte: now },
+      endDate: { gte: now },
+    },
     orderBy: [{ startDate: 'desc' }],
   });
 }

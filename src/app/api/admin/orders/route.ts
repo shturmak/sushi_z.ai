@@ -1,21 +1,28 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { apiSuccess, apiError } from '@/lib/api-response';
-import { requireAdmin } from '@/lib/auth-middleware';
+import { withTenantAdmin, tenantCatch } from '@/lib/tenant-middleware';
 import { OrderStatus } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin();
+    const ctx = await withTenantAdmin(request);
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const branchId = searchParams.get('branchId');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '25');
 
-    const where: Record<string, unknown> = {};
+    // Get all branch IDs for this brand to filter orders
+    const brandBranches = await db.branch.findMany({ where: { brandId: ctx.brandId }, select: { id: true } });
+    const brandBranchIds = brandBranches.map(b => b.id);
+
+    const where: Record<string, unknown> = { branchId: { in: brandBranchIds } };
     if (status && Object.values(OrderStatus).includes(status as OrderStatus)) where.status = status;
-    if (branchId) where.branchId = branchId;
+    if (branchId) {
+      if (!brandBranchIds.includes(branchId)) return apiError('FORBIDDEN', 'Branch does not belong to your brand', 403);
+      where.branchId = branchId;
+    }
 
     const [orders, total] = await Promise.all([
       db.order.findMany({
@@ -34,9 +41,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     return apiSuccess({ orders, total, page, limit, pages: Math.ceil(total / limit) });
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    console.error('Admin orders error:', error);
-    return apiError('INTERNAL_ERROR', 'Failed', 500);
+  } catch (err) {
+    return tenantCatch(err);
   }
 }

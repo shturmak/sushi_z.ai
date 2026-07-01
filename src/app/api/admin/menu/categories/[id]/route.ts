@@ -1,29 +1,48 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { apiSuccess, apiError } from '@/lib/api-response';
-import { requireAdmin } from '@/lib/auth-middleware';
+import { apiSuccess, apiNotFound } from '@/lib/api-response';
+import { withTenantAdmin, tenantCatch } from '@/lib/tenant-middleware';
 
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdmin();
+    const ctx = await withTenantAdmin(request);
     const { id } = await params;
-    const body = await request.json();
-    const category = await db.category.update({ where: { id }, data: body });
-    return apiSuccess(category, 'Category updated');
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    return apiError('INTERNAL_ERROR', 'Failed', 500);
+    const category = await db.category.findUnique({
+      where: { id },
+      include: { branch: { select: { name: true } }, _count: { select: { products: true } } },
+    });
+    if (!category || category.brandId !== ctx.brandId) return apiNotFound('Category not found');
+    return apiSuccess(category);
+  } catch (err) {
+    return tenantCatch(err);
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdmin();
+    const ctx = await withTenantAdmin(request);
     const { id } = await params;
+    const existing = await db.category.findUnique({ where: { id }, select: { brandId: true } });
+    if (!existing || existing.brandId !== ctx.brandId) return apiNotFound('Category not found');
+
+    const body = await request.json();
+    const category = await db.category.update({ where: { id }, data: body });
+    return apiSuccess(category, 'Category updated');
+  } catch (err) {
+    return tenantCatch(err);
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const ctx = await withTenantAdmin(request);
+    const { id } = await params;
+    const existing = await db.category.findUnique({ where: { id }, select: { brandId: true } });
+    if (!existing || existing.brandId !== ctx.brandId) return apiNotFound('Category not found');
+
     await db.category.delete({ where: { id } });
     return apiSuccess(null, 'Category deleted');
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    return apiError('INTERNAL_ERROR', 'Failed', 500);
+  } catch (err) {
+    return tenantCatch(err);
   }
 }

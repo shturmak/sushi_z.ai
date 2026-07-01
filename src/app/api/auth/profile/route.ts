@@ -1,19 +1,24 @@
+import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { apiSuccess, apiUnauthorized } from '@/lib/api-response';
-import { requireAuth } from '@/lib/auth-middleware';
+import { apiSuccess, apiError } from '@/lib/api-response';
+import { withTenantAuth, tenantCatch } from '@/lib/tenant-middleware';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const authUser = await requireAuth();
+    const ctx = await withTenantAuth(request);
 
     const user = await db.user.findUnique({
-      where: { id: authUser.userId },
-      include: { loyaltyAccount: true },
+      where: { id: ctx.user.userId },
+      select: { id: true, phone: true, email: true, firstName: true, lastName: true, role: true, avatarUrl: true, isActive: true, createdAt: true },
     });
 
     if (!user) {
-      return apiUnauthorized('User not found');
+      return apiError('NOT_FOUND', 'User not found', 404);
     }
+
+    const loyalty = await db.loyaltyAccount.findUnique({
+      where: { userId_brandId: { userId: ctx.user.userId, brandId: ctx.brandId } },
+    });
 
     return apiSuccess({
       id: user.id,
@@ -25,17 +30,15 @@ export async function GET() {
       avatarUrl: user.avatarUrl,
       isActive: user.isActive,
       createdAt: user.createdAt,
-      loyalty: user.loyaltyAccount
+      loyalty: loyalty
         ? {
-            balance: user.loyaltyAccount.balance,
-            lifetime: user.loyaltyAccount.lifetime,
-            tier: user.loyaltyAccount.tier,
+            balance: loyalty.balance,
+            lifetime: loyalty.lifetime,
+            tier: loyalty.tier,
           }
         : null,
     });
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    console.error('Profile error:', error);
-    return apiUnauthorized();
+  } catch (err) {
+    return tenantCatch(err);
   }
 }

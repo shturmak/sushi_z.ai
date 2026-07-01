@@ -1,12 +1,14 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { apiSuccess, apiNotFound } from '@/lib/api-response';
+import { apiSuccess, apiError } from '@/lib/api-response';
+import { withTenant, tenantCatch } from '@/lib/tenant-middleware';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const ctx = await withTenant(request);
     const { id } = await params;
 
     const product = await db.product.findUnique({
@@ -24,13 +26,12 @@ export async function GET(
       },
     });
 
-    if (!product) {
-      return apiNotFound('Product not found');
+    if (!product || product.brandId !== ctx.brandId) {
+      return apiError('FORBIDDEN', 'Resource not found', 404);
     }
 
     return apiSuccess(product);
-  } catch (error) {
-    console.error('Get product error:', error);
-    return apiNotFound('Product not found');
+  } catch (err) {
+    return tenantCatch(err);
   }
 }

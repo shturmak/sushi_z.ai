@@ -1,18 +1,18 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { apiSuccess, apiError, apiNotFound, apiUnauthorized } from '@/lib/api-response';
-import { requireAuth } from '@/lib/auth-middleware';
+import { apiSuccess, apiError, apiNotFound } from '@/lib/api-response';
+import { withTenantAuth, tenantCatch } from '@/lib/tenant-middleware';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authUser = await requireAuth();
+    const ctx = await withTenantAuth(request);
     const { id } = await params;
 
     const address = await db.userAddress.findFirst({
-      where: { id, userId: authUser.userId },
+      where: { id, userId: ctx.user.userId, brandId: ctx.brandId },
     });
 
     if (!address) {
@@ -20,10 +20,8 @@ export async function GET(
     }
 
     return apiSuccess(address);
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    console.error('Get address error:', error);
-    return apiUnauthorized();
+  } catch (err) {
+    return tenantCatch(err);
   }
 }
 
@@ -32,13 +30,13 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authUser = await requireAuth();
+    const ctx = await withTenantAuth(request);
     const { id } = await params;
     const body = await request.json();
     const { label, street, building, apartment, floor, entrance, comment, latitude, longitude, isDefault } = body;
 
     const address = await db.userAddress.findFirst({
-      where: { id, userId: authUser.userId },
+      where: { id, userId: ctx.user.userId, brandId: ctx.brandId },
     });
 
     if (!address) {
@@ -47,7 +45,7 @@ export async function PUT(
 
     if (isDefault && !address.isDefault) {
       await db.userAddress.updateMany({
-        where: { userId: authUser.userId, isDefault: true },
+        where: { userId: ctx.user.userId, brandId: ctx.brandId, isDefault: true },
         data: { isDefault: false },
       });
     }
@@ -69,23 +67,21 @@ export async function PUT(
     });
 
     return apiSuccess(updated, 'Address updated');
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    console.error('Update address error:', error);
-    return apiError('INTERNAL_ERROR', 'Failed to update address', 500);
+  } catch (err) {
+    return tenantCatch(err);
   }
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authUser = await requireAuth();
+    const ctx = await withTenantAuth(request);
     const { id } = await params;
 
     const address = await db.userAddress.findFirst({
-      where: { id, userId: authUser.userId },
+      where: { id, userId: ctx.user.userId, brandId: ctx.brandId },
     });
 
     if (!address) {
@@ -95,9 +91,7 @@ export async function DELETE(
     await db.userAddress.delete({ where: { id } });
 
     return apiSuccess(null, 'Address deleted');
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    console.error('Delete address error:', error);
-    return apiError('INTERNAL_ERROR', 'Failed to delete address', 500);
+  } catch (err) {
+    return tenantCatch(err);
   }
 }

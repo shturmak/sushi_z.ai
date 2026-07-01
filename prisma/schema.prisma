@@ -13,6 +13,38 @@ datasource db {
 }
 
 // ──────────────────────────────────────────────
+//  BRAND (TENANT)
+// ──────────────────────────────────────────────
+
+model Brand {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  logoUrl         String?
+  primaryColor    String?
+  secondaryColor  String?
+  accentColor     String?
+  heroBannerUrl   String?
+  promoBannerUrls String?  // JSON string: ["url1", "url2"]
+  description     String?
+  slogan          String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  branches        Branch[]
+  categories      Category[]
+  products        Product[]
+  promotions      Promotion[]
+  orders          Order[]
+  carts           Cart[]
+  loyaltyAccounts LoyaltyAccount[]
+  users           User[]
+
+  @@map("brands")
+}
+
+// ──────────────────────────────────────────────
 //  AUTH & USERS
 // ──────────────────────────────────────────────
 
@@ -23,17 +55,19 @@ model User {
   passwordHash  String
   firstName     String    @default("")
   lastName      String    @default("")
-  role          String    @default("customer") // customer | admin | manager
+  role          String    @default("customer") // customer | admin | manager | super_admin
   avatarUrl     String?
   isActive      Boolean   @default(true)
+  brandId       String?   // admin/manager brand association
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  addresses     UserAddress[]
-  carts         Cart[]
-  orders        Order[]
-  sessions      UserSession[]
-  loyaltyAccount LoyaltyAccount?
+  addresses      UserAddress[]
+  carts          Cart[]
+  orders         Order[]
+  sessions       UserSession[]
+  loyaltyAccounts LoyaltyAccount[]
+  brand          Brand?   @relation(fields: [brandId], references: [id])
 
   @@map("users")
 }
@@ -69,7 +103,7 @@ model UserAddress {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_addresses")
 }
@@ -80,8 +114,9 @@ model UserAddress {
 
 model Branch {
   id          String   @id @default(cuid())
+  brandId     String
   name        String
-  slug        String   @unique
+  slug        String
   address     String
   phone       String?
   email       String?
@@ -95,12 +130,14 @@ model Branch {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  brand        Brand         @relation(fields: [brandId], references: [id])
   categories   Category[]
   orders       Order[]
   deliveryZones DeliveryZone[]
   products     Product[]
   carts        Cart[]
 
+  @@unique([brandId, slug])
   @@map("branches")
 }
 
@@ -128,6 +165,7 @@ model DeliveryZone {
 
 model Category {
   id        String   @id @default(cuid())
+  brandId   String
   branchId  String?
   name      String
   slug      String
@@ -138,15 +176,17 @@ model Category {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  branch   Branch?  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  brand   Brand    @relation(fields: [brandId], references: [id])
+  branch  Branch?  @relation(fields: [branchId], references: [id], onDelete: Cascade)
   products Product[]
 
-  @@unique([branchId, slug])
+  @@unique([brandId, branchId, slug])
   @@map("categories")
 }
 
 model Product {
   id          String   @id @default(cuid())
+  brandId     String
   categoryId  String
   branchId    String?  // null = available at all branches
   name        String
@@ -161,6 +201,7 @@ model Product {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  brand         Brand               @relation(fields: [brandId], references: [id])
   category      Category             @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   branch        Branch?              @relation(fields: [branchId], references: [id], onDelete: SetNull)
   optionGroups  ProductOptionGroup[]
@@ -203,15 +244,18 @@ model ProductOption {
 
 model Cart {
   id        String   @id @default(cuid())
-  userId    String   @unique // one active cart per user
+  userId    String
+  brandId   String
   branchId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  branch  Branch     @relation(fields: [branchId], references: [id])
-  items   CartItem[]
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brand  Brand  @relation(fields: [brandId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+  items  CartItem[]
 
+  @@unique([userId, brandId])
   @@map("carts")
 }
 
@@ -254,6 +298,7 @@ model Order {
   id            String      @id @default(cuid())
   orderNumber   String      @unique  // human-readable: #1042
   userId        String
+  brandId       String
   branchId      String
   type          OrderType
   status        OrderStatus @default(new)
@@ -292,6 +337,7 @@ model Order {
   updatedAt     DateTime  @updatedAt
 
   user        User        @relation(fields: [userId], references: [id])
+  brand       Brand       @relation(fields: [brandId], references: [id])
   branch      Branch      @relation(fields: [branchId], references: [id])
   promotion   Promotion?  @relation(fields: [promotionId], references: [id])
   items       OrderItem[]
@@ -370,6 +416,7 @@ enum PromotionStatus {
 
 model Promotion {
   id           String         @id @default(cuid())
+  brandId      String
   code         String?        @unique // null = auto-applied
   name         String
   description  String?
@@ -384,6 +431,7 @@ model Promotion {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
+  brand  Brand   @relation(fields: [brandId], references: [id])
   orders Order[]
 
   @@map("promotions")
@@ -402,7 +450,8 @@ enum LoyaltyTransactionType {
 
 model LoyaltyAccount {
   id          String              @id @default(cuid())
-  userId      String              @unique
+  userId      String
+  brandId     String
   balance     Float               @default(0)
   lifetime    Float               @default(0)
   tier        String              @default("bronze") // bronze, silver, gold
@@ -410,8 +459,10 @@ model LoyaltyAccount {
   updatedAt   DateTime            @updatedAt
 
   user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brand        Brand                @relation(fields: [brandId], references: [id])
   transactions LoyaltyTransaction[]
 
+  @@unique([userId, brandId])
   @@map("loyalty_accounts")
 }
 

@@ -1,25 +1,30 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { apiSuccess, apiError, apiNotFound } from '@/lib/api-response';
-import { requireAdmin } from '@/lib/auth-middleware';
+import { apiSuccess, apiNotFound } from '@/lib/api-response';
+import { withTenantAdmin, tenantCatch } from '@/lib/tenant-middleware';
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdmin();
+    const ctx = await withTenantAdmin(request);
     const { id } = await params;
-    const product = await db.product.findUnique({ where: { id }, include: { category: true, optionGroups: { include: { options: true }, orderBy: { sortOrder: 'asc' } } } });
-    if (!product) return apiNotFound('Product not found');
+    const product = await db.product.findUnique({
+      where: { id },
+      include: { category: true, optionGroups: { include: { options: true }, orderBy: { sortOrder: 'asc' } } },
+    });
+    if (!product || product.brandId !== ctx.brandId) return apiNotFound('Product not found');
     return apiSuccess(product);
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    return apiError('INTERNAL_ERROR', 'Failed', 500);
+  } catch (err) {
+    return tenantCatch(err);
   }
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdmin();
+    const ctx = await withTenantAdmin(request);
     const { id } = await params;
+    const existing = await db.product.findUnique({ where: { id }, select: { brandId: true } });
+    if (!existing || existing.brandId !== ctx.brandId) return apiNotFound('Product not found');
+
     const body = await request.json();
     const { name, description, price, weight, calories, isAvailable, sortOrder, optionGroups } = body;
 
@@ -45,20 +50,21 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const updated = await db.product.findUnique({ where: { id }, include: { optionGroups: { include: { options: true } } } });
     return apiSuccess(updated, 'Product updated');
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    return apiError('INTERNAL_ERROR', 'Failed', 500);
+  } catch (err) {
+    return tenantCatch(err);
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdmin();
+    const ctx = await withTenantAdmin(request);
     const { id } = await params;
+    const existing = await db.product.findUnique({ where: { id }, select: { brandId: true } });
+    if (!existing || existing.brandId !== ctx.brandId) return apiNotFound('Product not found');
+
     await db.product.delete({ where: { id } });
     return apiSuccess(null, 'Product deleted');
-  } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    return apiError('INTERNAL_ERROR', 'Failed', 500);
+  } catch (err) {
+    return tenantCatch(err);
   }
 }
