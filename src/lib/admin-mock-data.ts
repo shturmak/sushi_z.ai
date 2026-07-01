@@ -1,5 +1,6 @@
 import type {
   Branch,
+  Brand,
   Category,
   Product,
   Order,
@@ -11,6 +12,11 @@ import type {
 //  Mock Data for Admin Panel
 //  (mirrors API response format: { success: true, data: ... })
 // ──────────────────────────────────────────────────────
+
+export const mockBrands: Brand[] = [
+  { id: 'cmr2mtf930000rpf9udtpi81i', name: 'Суші Мастер', slug: 'sushi-master', logoUrl: null, primaryColor: '#e11d48', secondaryColor: '#f43f5e', accentColor: '#fbbf24', heroBannerUrl: null, promoBannerUrls: null, description: 'Мережа суші-ресторанів у Києві', slogan: 'Смак Японії вдома', isActive: true, branchCount: 2, productCount: 19, orderCount: 1247, createdAt: '2024-01-15T10:00:00.000Z', updatedAt: '2024-06-01T12:00:00.000Z' },
+  { id: 'cmr2mtf980001rpf926lieyzz', name: 'Суши Токіо', slug: 'sushi-tokyo', logoUrl: null, primaryColor: '#0f766e', secondaryColor: '#14b8a6', accentColor: '#f59e0b', heroBannerUrl: null, promoBannerUrls: null, description: 'Авторські роли та суши у Львові', slogan: 'Токіо на вашому столі', isActive: true, branchCount: 1, productCount: 8, orderCount: 432, createdAt: '2024-03-01T10:00:00.000Z', updatedAt: '2024-06-01T12:00:00.000Z' },
+];
 
 export const mockBranches: Branch[] = [
   {
