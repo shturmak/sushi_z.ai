@@ -1,0 +1,431 @@
+// ============================================================
+// SushiChain — Omnichannel Food Ordering System
+// Prisma Schema (SQLite)
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────────
+//  AUTH & USERS
+// ──────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  phone         String?   @unique
+  email         String?   @unique
+  passwordHash  String
+  firstName     String    @default("")
+  lastName      String    @default("")
+  role          String    @default("customer") // customer | admin | manager
+  avatarUrl     String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  addresses     UserAddress[]
+  carts         Cart[]
+  orders        Order[]
+  sessions      UserSession[]
+  loyaltyAccount LoyaltyAccount?
+
+  @@map("users")
+}
+
+model UserSession {
+  id           String   @id @default(cuid())
+  userId       String
+  refreshToken String   @unique
+  deviceInfo   String?   // e.g. "iPhone 15 / iOS 17"
+  ipAddress    String?
+  userAgent    String?
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
+}
+
+model UserAddress {
+  id        String   @id @default(cuid())
+  userId    String
+  label     String?   // "Home", "Work"
+  street    String
+  building  String?
+  apartment String?
+  floor     String?
+  entrance  String?
+  comment   String?
+  latitude  Float?
+  longitude Float?
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_addresses")
+}
+
+// ──────────────────────────────────────────────
+//  BRANCHES
+// ──────────────────────────────────────────────
+
+model Branch {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  address     String
+  phone       String?
+  email       String?
+  latitude    Float?
+  longitude   Float?
+  isOpen      Boolean  @default(true)
+  workSchedule String? // JSON: {"mon":"09:00-22:00",...}
+  description String?
+  imageUrl    String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  categories   Category[]
+  orders       Order[]
+  deliveryZones DeliveryZone[]
+  products     Product[]
+  carts        Cart[]
+
+  @@map("branches")
+}
+
+model DeliveryZone {
+  id          String   @id @default(cuid())
+  branchId    String
+  name        String
+  description String?
+  minOrder    Float    @default(0)    // minimum order amount
+  deliveryFee Float    @default(0)
+  estimatedMinutes Int @default(30)
+  polygonData String?                   // JSON polygon coordinates
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@map("delivery_zones")
+}
+
+// ──────────────────────────────────────────────
+//  MENU
+// ──────────────────────────────────────────────
+
+model Category {
+  id        String   @id @default(cuid())
+  branchId  String?
+  name      String
+  slug      String
+  description String?
+  imageUrl  String?
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch   Branch?  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@unique([branchId, slug])
+  @@map("categories")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  categoryId  String
+  branchId    String?  // null = available at all branches
+  name        String
+  slug        String
+  description String?
+  imageUrl    String?
+  price       Float
+  weight      String?  // e.g. "350г"
+  calories    Int?
+  isAvailable Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category      Category             @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  branch        Branch?              @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  optionGroups  ProductOptionGroup[]
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+
+  @@map("products")
+}
+
+model ProductOptionGroup {
+  id          String   @id @default(cuid())
+  productId   String
+  name        String   // e.g. "Size", "Spiciness"
+  isRequired  Boolean  @default(false)
+  maxChoices  Int      @default(1)   // 0 = unlimited
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  product Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  options  ProductOption[]
+
+  @@map("product_option_groups")
+}
+
+model ProductOption {
+  id         String  @id @default(cuid())
+  groupId    String
+  name       String  // e.g. "Large +80₴"
+  priceDelta Float   @default(0) // additional cost
+  sortOrder  Int     @default(0)
+
+  group ProductOptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@map("product_options")
+}
+
+// ──────────────────────────────────────────────
+//  CART (server-side, per user)
+// ──────────────────────────────────────────────
+
+model Cart {
+  id        String   @id @default(cuid())
+  userId    String   @unique // one active cart per user
+  branchId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch  Branch     @relation(fields: [branchId], references: [id])
+  items   CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id          String   @id @default(cuid())
+  cartId      String
+  productId   String
+  quantity    Int      @default(1)
+  selectedOptions String? // JSON: [{optionId, groupId, name, priceDelta}, ...]
+  totalPrice  Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("cart_items")
+}
+
+// ──────────────────────────────────────────────
+//  ORDERS
+// ──────────────────────────────────────────────
+
+enum OrderType {
+  delivery
+  pickup
+}
+
+enum OrderStatus {
+  new
+  confirmed
+  cooking
+  ready
+  delivering
+  completed
+  cancelled
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  orderNumber   String      @unique  // human-readable: #1042
+  userId        String
+  branchId      String
+  type          OrderType
+  status        OrderStatus @default(new)
+
+  // Delivery details
+  addressSnapshot   String?  // JSON of delivery address at order time
+  deliveryFee       Float    @default(0)
+
+  // Totals
+  subtotal      Float
+  discount      Float    @default(0)
+  total         Float
+
+  // Customer note
+  note          String?
+
+  // Promotion
+  promotionId   String?
+  promotionCode String?
+
+  // Loyalty
+  bonusUsed     Float    @default(0)
+
+  // Estimated
+  estimatedMinutes Int?
+
+  // Timeline
+  confirmedAt   DateTime?
+  cookingAt     DateTime?
+  readyAt       DateTime?
+  deliveringAt  DateTime?
+  completedAt   DateTime?
+  cancelledAt   DateTime?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user        User        @relation(fields: [userId], references: [id])
+  branch      Branch      @relation(fields: [branchId], references: [id])
+  promotion   Promotion?  @relation(fields: [promotionId], references: [id])
+  items       OrderItem[]
+  payments    Payment[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id               String   @id @default(cuid())
+  orderId          String
+  productId        String
+  productName      String   // snapshot
+  productPrice     Float    // snapshot
+  quantity         Int
+  selectedOptions  String?  // JSON snapshot
+  totalPrice       Float
+  createdAt        DateTime @default(now())
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+// ──────────────────────────────────────────────
+//  PAYMENTS
+// ──────────────────────────────────────────────
+
+enum PaymentStatus {
+  pending
+  processing
+  succeeded
+  failed
+  refunded
+}
+
+enum PaymentMethod {
+  card
+  cash
+  bonus
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  orderId         String
+  method          PaymentMethod
+  status          PaymentStatus @default(pending)
+  amount          Float
+  providerTxId    String?       // external payment provider transaction ID
+  providerPayload String?       // full webhook payload JSON
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+// ──────────────────────────────────────────────
+//  PROMOTIONS
+// ──────────────────────────────────────────────
+
+enum PromotionType {
+  percentage    // 20% off
+  fixed         // 50₴ off
+  free_delivery // no delivery fee
+  bonus         // +100 bonus points
+}
+
+enum PromotionStatus {
+  active
+  inactive
+  expired
+}
+
+model Promotion {
+  id           String         @id @default(cuid())
+  code         String?        @unique // null = auto-applied
+  name         String
+  description  String?
+  type         PromotionType
+  value        Float          // percentage value, fixed amount, etc.
+  minOrder     Float          @default(0)
+  maxUses      Int?           // null = unlimited
+  usedCount    Int            @default(0)
+  startDate    DateTime
+  endDate      DateTime
+  status       PromotionStatus @default(active)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  orders Order[]
+
+  @@map("promotions")
+}
+
+// ──────────────────────────────────────────────
+//  LOYALTY
+// ──────────────────────────────────────────────
+
+enum LoyaltyTransactionType {
+  earned     // from completing order
+  spent      // used for payment
+  adjusted   // manual admin adjustment
+  expired
+}
+
+model LoyaltyAccount {
+  id          String              @id @default(cuid())
+  userId      String              @unique
+  balance     Float               @default(0)
+  lifetime    Float               @default(0)
+  tier        String              @default("bronze") // bronze, silver, gold
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions LoyaltyTransaction[]
+
+  @@map("loyalty_accounts")
+}
+
+model LoyaltyTransaction {
+  id              String                   @id @default(cuid())
+  accountId       String
+  type            LoyaltyTransactionType
+  amount          Float
+  balanceAfter    Float
+  description     String?
+  relatedOrderId  String?
+  createdAt       DateTime                 @default(now())
+
+  account LoyaltyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("loyalty_transactions")
+}
