@@ -13,6 +13,74 @@ datasource db {
 }
 
 // ──────────────────────────────────────────────
+//  ENUMS
+// ──────────────────────────────────────────────
+
+enum UserRole {
+  customer
+  admin
+  super_admin
+  manager
+}
+
+enum LoyaltyTier {
+  bronze
+  silver
+  gold
+}
+
+enum LoyaltyTransactionType {
+  earned
+  spent
+  adjusted
+  expired
+}
+
+// ──────────────────────────────────────────────
+//  BRAND (Tenant)
+// ──────────────────────────────────────────────
+
+model Brand {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  logoUrl         String?
+  primaryColor    String   @default("#e11d48")
+  secondaryColor  String   @default("#f43f5e")
+  accentColor     String   @default("#fbbf24")
+  heroBannerUrl   String?
+  promoBannerUrls String?   // JSON string
+  description     String?
+  slogan          String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  branches         Branch[]
+  promotions       Promotion[]
+  admins           User[]   @relation("BrandAdmins")
+  loyaltyAccounts  LoyaltyAccount[]
+  categories       Category[]
+  products         Product[]
+  brandCounts      BrandCounts?
+
+  @@map("brands")
+}
+
+model BrandCounts {
+  id        String  @id @default(cuid())
+  brandId   String  @unique
+  branches  Int     @default(0)
+  products  Int     @default(0)
+  orders    Int     @default(0)
+  users     Int     @default(0)
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@map("brand_counts")
+}
+
+// ──────────────────────────────────────────────
 //  AUTH & USERS
 // ──────────────────────────────────────────────
 
@@ -23,18 +91,21 @@ model User {
   passwordHash  String
   firstName     String    @default("")
   lastName      String    @default("")
-  role          String    @default("customer") // customer | admin | manager
+  role          UserRole  @default(customer)
+  brandId       String?
   avatarUrl     String?
   isActive      Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  addresses     UserAddress[]
-  carts         Cart[]
-  orders        Order[]
-  sessions      UserSession[]
-  loyaltyAccount LoyaltyAccount?
+  addresses      UserAddress[]
+  carts          Cart[]
+  orders         Order[]
+  sessions       UserSession[]
+  loyaltyAccounts LoyaltyAccount[]
+  brand            Brand?       @relation("BrandAdmins", fields: [brandId], references: [id], onDelete: SetNull)
 
+  @@index([brandId])
   @@map("users")
 }
 
@@ -42,11 +113,11 @@ model UserSession {
   id           String   @id @default(cuid())
   userId       String
   refreshToken String   @unique
-  deviceInfo   String?   // e.g. "iPhone 15 / iOS 17"
+  deviceInfo   String?
   ipAddress    String?
   userAgent    String?
   expiresAt    DateTime
-  createdAt    DateTime  @default(now())
+  createdAt    DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -56,7 +127,7 @@ model UserSession {
 model UserAddress {
   id        String   @id @default(cuid())
   userId    String
-  label     String?   // "Home", "Work"
+  label     String?
   street    String
   building  String?
   apartment String?
@@ -80,27 +151,31 @@ model UserAddress {
 
 model Branch {
   id          String   @id @default(cuid())
+  brandId     String
   name        String
-  slug        String   @unique
+  slug        String
   address     String
   phone       String?
   email       String?
   latitude    Float?
   longitude   Float?
   isOpen      Boolean  @default(true)
-  workSchedule String? // JSON: {"mon":"09:00-22:00",...}
+  workSchedule String?
   description String?
   imageUrl    String?
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  categories   Category[]
-  orders       Order[]
-  deliveryZones DeliveryZone[]
-  products     Product[]
-  carts        Cart[]
+  brand          Brand          @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  categories     Category[]
+  orders         Order[]
+  deliveryZones  DeliveryZone[]
+  products       Product[]
+  carts          Cart[]
 
+  @@unique([brandId, slug])
+  @@index([brandId])
   @@map("branches")
 }
 
@@ -109,10 +184,10 @@ model DeliveryZone {
   branchId    String
   name        String
   description String?
-  minOrder    Float    @default(0)    // minimum order amount
+  minOrder    Float    @default(0)
   deliveryFee Float    @default(0)
   estimatedMinutes Int @default(30)
-  polygonData String?                   // JSON polygon coordinates
+  polygonData String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -127,55 +202,63 @@ model DeliveryZone {
 // ──────────────────────────────────────────────
 
 model Category {
-  id        String   @id @default(cuid())
-  branchId  String?
-  name      String
-  slug      String
+  id          String   @id @default(cuid())
+  brandId     String
+  branchId    String?
+  name        String
+  slug        String
   description String?
-  imageUrl  String?
-  sortOrder Int      @default(0)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  imageUrl    String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
+  brand    Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
   branch   Branch?  @relation(fields: [branchId], references: [id], onDelete: Cascade)
   products Product[]
 
-  @@unique([branchId, slug])
+  @@unique([brandId, slug])
+  @@index([brandId])
   @@map("categories")
 }
 
 model Product {
   id          String   @id @default(cuid())
   categoryId  String
-  branchId    String?  // null = available at all branches
+  brandId     String
+  branchId    String?
   name        String
   slug        String
   description String?
   imageUrl    String?
   price       Float
-  weight      String?  // e.g. "350г"
+  weight      String?
   calories    Int?
   isAvailable Boolean  @default(true)
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  category      Category             @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  branch        Branch?              @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  optionGroups  ProductOptionGroup[]
-  cartItems     CartItem[]
-  orderItems    OrderItem[]
+  category     Category             @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  brand        Brand?               @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  branch       Branch?              @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  optionGroups ProductOptionGroup[]
+  cartItems    CartItem[]
+  orderItems   OrderItem[]
 
+  @@unique([brandId, slug])
+  @@index([brandId])
+  @@index([categoryId])
   @@map("products")
 }
 
 model ProductOptionGroup {
   id          String   @id @default(cuid())
   productId   String
-  name        String   // e.g. "Size", "Spiciness"
+  name        String
   isRequired  Boolean  @default(false)
-  maxChoices  Int      @default(1)   // 0 = unlimited
+  maxChoices  Int      @default(0)
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
 
@@ -188,8 +271,8 @@ model ProductOptionGroup {
 model ProductOption {
   id         String  @id @default(cuid())
   groupId    String
-  name       String  // e.g. "Large +80₴"
-  priceDelta Float   @default(0) // additional cost
+  name       String
+  priceDelta Float   @default(0)
   sortOrder  Int     @default(0)
 
   group ProductOptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
@@ -198,12 +281,12 @@ model ProductOption {
 }
 
 // ──────────────────────────────────────────────
-//  CART (server-side, per user)
+//  CART
 // ──────────────────────────────────────────────
 
 model Cart {
   id        String   @id @default(cuid())
-  userId    String   @unique // one active cart per user
+  userId    String   @unique
   branchId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -216,14 +299,14 @@ model Cart {
 }
 
 model CartItem {
-  id          String   @id @default(cuid())
-  cartId      String
-  productId   String
-  quantity    Int      @default(1)
-  selectedOptions String? // JSON: [{optionId, groupId, name, priceDelta}, ...]
-  totalPrice  Float
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(cuid())
+  cartId          String
+  productId       String
+  quantity        Int      @default(1)
+  selectedOptions String?
+  totalPrice      Float
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])
@@ -252,35 +335,28 @@ enum OrderStatus {
 
 model Order {
   id            String      @id @default(cuid())
-  orderNumber   String      @unique  // human-readable: #1042
+  orderNumber   String      @unique
   userId        String
   branchId      String
   type          OrderType
   status        OrderStatus @default(new)
 
-  // Delivery details
-  addressSnapshot   String?  // JSON of delivery address at order time
+  addressSnapshot   String?
   deliveryFee       Float    @default(0)
 
-  // Totals
   subtotal      Float
   discount      Float    @default(0)
   total         Float
 
-  // Customer note
   note          String?
 
-  // Promotion
   promotionId   String?
   promotionCode String?
 
-  // Loyalty
   bonusUsed     Float    @default(0)
 
-  // Estimated
   estimatedMinutes Int?
 
-  // Timeline
   confirmedAt   DateTime?
   cookingAt     DateTime?
   readyAt       DateTime?
@@ -304,10 +380,10 @@ model OrderItem {
   id               String   @id @default(cuid())
   orderId          String
   productId        String
-  productName      String   // snapshot
-  productPrice     Float    // snapshot
+  productName      String
+  productPrice     Float
   quantity         Int
-  selectedOptions  String?  // JSON snapshot
+  selectedOptions  String?
   totalPrice       Float
   createdAt        DateTime @default(now())
 
@@ -341,8 +417,8 @@ model Payment {
   method          PaymentMethod
   status          PaymentStatus @default(pending)
   amount          Float
-  providerTxId    String?       // external payment provider transaction ID
-  providerPayload String?       // full webhook payload JSON
+  providerTxId    String?
+  providerPayload String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -356,10 +432,10 @@ model Payment {
 // ──────────────────────────────────────────────
 
 enum PromotionType {
-  percentage    // 20% off
-  fixed         // 50₴ off
-  free_delivery // no delivery fee
-  bonus         // +100 bonus points
+  percentage
+  fixed
+  free_delivery
+  bonus
 }
 
 enum PromotionStatus {
@@ -370,13 +446,14 @@ enum PromotionStatus {
 
 model Promotion {
   id           String         @id @default(cuid())
-  code         String?        @unique // null = auto-applied
+  brandId      String
+  code         String?
   name         String
   description  String?
   type         PromotionType
-  value        Float          // percentage value, fixed amount, etc.
+  value        Float
   minOrder     Float          @default(0)
-  maxUses      Int?           // null = unlimited
+  maxUses      Int?
   usedCount    Int            @default(0)
   startDate    DateTime
   endDate      DateTime
@@ -384,8 +461,12 @@ model Promotion {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
+  brand  Brand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
   orders Order[]
 
+  @@unique([brandId, code])
+  @@index([brandId])
+  @@index([code])
   @@map("promotions")
 }
 
@@ -393,25 +474,23 @@ model Promotion {
 //  LOYALTY
 // ──────────────────────────────────────────────
 
-enum LoyaltyTransactionType {
-  earned     // from completing order
-  spent      // used for payment
-  adjusted   // manual admin adjustment
-  expired
-}
-
 model LoyaltyAccount {
   id          String              @id @default(cuid())
-  userId      String              @unique
+  userId      String
+  brandId     String
   balance     Float               @default(0)
   lifetime    Float               @default(0)
-  tier        String              @default("bronze") // bronze, silver, gold
+  tier        LoyaltyTier         @default(bronze)
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 
   user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brand        Brand                @relation(fields: [brandId], references: [id], onDelete: Cascade)
   transactions LoyaltyTransaction[]
 
+  @@unique([userId, brandId])
+  @@index([userId])
+  @@index([brandId])
   @@map("loyalty_accounts")
 }
 
@@ -427,5 +506,6 @@ model LoyaltyTransaction {
 
   account LoyaltyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
+  @@index([accountId])
   @@map("loyalty_transactions")
 }
