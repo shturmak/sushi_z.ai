@@ -1,14 +1,15 @@
 import type {
-  Branch, Category, Product, Order, Promotion, Analytics,
+  Brand, Branch, Category, Product, Order, Promotion, Analytics,
 } from './admin-types';
 import {
-  mockBranches, mockCategories, mockProducts, mockOrders,
+  mockBrands, mockBranches, mockCategories, mockProducts, mockOrders,
   mockPromotions, mockAnalytics,
 } from './admin-mock-data';
 
 type AnyRecord = Record<string, unknown>;
 
 // In-memory mutable copies
+const brands = [...mockBrands];
 const branches = [...mockBranches];
 const categories = [...mockCategories];
 const products = [...mockProducts];
@@ -25,6 +26,57 @@ function extractId(path: string, prefix: string): string | null {
 
 export function getMockResponse<T>(path: string, options?: RequestInit): T {
   const method = options?.method?.toUpperCase() || 'GET';
+
+  // ─── Brands ───
+  if (path.startsWith('/api/admin/brands')) {
+    if (path.includes('/brands/')) {
+      const id = extractId(path, '/api/admin/brands/');
+      if (id) {
+        if (method === 'GET') {
+          const b = brands.find(x => x.id === id);
+          if (!b) throw new Error('Brand not found');
+          return b as T;
+        }
+        if (method === 'PUT') {
+          const body = JSON.parse(options?.body as string || '{}');
+          const idx = brands.findIndex(x => x.id === id);
+          if (idx === -1) throw new Error('Brand not found');
+          brands[idx] = { ...brands[idx], ...body, updatedAt: new Date().toISOString() };
+          return brands[idx] as T;
+        }
+        if (method === 'DELETE') {
+          const idx = brands.findIndex(x => x.id === id);
+          if (idx !== -1) brands.splice(idx, 1);
+          return null as T;
+        }
+      }
+    }
+    if (method === 'GET') return brands as T;
+    if (method === 'POST') {
+      const body = JSON.parse(options?.body as string || '{}');
+      const newItem: Brand = {
+        id: 'brand' + Date.now(),
+        name: body.name,
+        slug: body.slug,
+        logoUrl: null,
+        primaryColor: body.primaryColor,
+        secondaryColor: body.secondaryColor,
+        accentColor: body.accentColor,
+        heroBannerUrl: null,
+        promoBannerUrls: null,
+        description: body.description || null,
+        slogan: body.slogan || null,
+        isActive: body.isActive,
+        branchCount: 0,
+        productCount: 0,
+        orderCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      brands.push(newItem);
+      return newItem as T;
+    }
+  }
 
   // ─── Analytics ───
   if (path.startsWith('/api/admin/analytics')) {
