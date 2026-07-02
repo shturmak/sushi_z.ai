@@ -8,7 +8,7 @@ export async function GET() {
 
     const user = await db.user.findUnique({
       where: { id: authUser.userId },
-      include: { loyaltyAccount: true },
+      include: { loyaltyAccounts: true },
     });
 
     if (!user) {
@@ -25,11 +25,11 @@ export async function GET() {
       avatarUrl: user.avatarUrl,
       isActive: user.isActive,
       createdAt: user.createdAt,
-      loyalty: user.loyaltyAccount
+      loyalty: user.loyaltyAccounts?.[0]
         ? {
-            balance: user.loyaltyAccount.balance,
-            lifetime: user.loyaltyAccount.lifetime,
-            tier: user.loyaltyAccount.tier,
+            balance: user.loyaltyAccounts[0].balance,
+            lifetime: user.loyaltyAccounts[0].lifetime,
+            tier: user.loyaltyAccounts[0].tier,
           }
         : null,
     });

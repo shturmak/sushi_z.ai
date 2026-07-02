@@ -17,8 +17,8 @@ export async function POST(request: NextRequest) {
     }
 
     const user = email
-      ? await db.user.findUnique({ where: { email }, include: { loyaltyAccount: true } })
-      : await db.user.findUnique({ where: { phone }, include: { loyaltyAccount: true } });
+      ? await db.user.findUnique({ where: { email }, include: { loyaltyAccounts: { take: 1 } } })
+      : await db.user.findUnique({ where: { phone }, include: { loyaltyAccounts: { take: 1 } } });
 
     if (!user) {
       return apiError('INVALID_CREDENTIALS', 'Invalid email/phone or password', 401);
@@ -62,8 +62,8 @@ export async function POST(request: NextRequest) {
         role: user.role,
       },
       loyalty: {
-        balance: user.loyaltyAccount?.balance ?? 0,
-        tier: user.loyaltyAccount?.tier ?? 'bronze',
+        balance: user.loyaltyAccounts?.[0]?.balance ?? 0,
+        tier: user.loyaltyAccounts?.[0]?.tier ?? 'bronze',
       },
       accessToken,
       refreshToken,

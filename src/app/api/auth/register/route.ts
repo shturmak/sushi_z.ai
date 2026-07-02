@@ -6,7 +6,7 @@ import { generateAccessToken, generateRefreshToken, hashPassword } from '@/lib/a
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { phone, email, password, firstName, lastName } = body;
+    const { phone, email, password, firstName, lastName, brandId } = body;
 
     if (!password) {
       return apiError('VALIDATION_ERROR', 'Password is required');
@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
     const loyaltyAccount = await db.loyaltyAccount.create({
       data: {
         userId: user.id,
+        brandId: brandId || '',
       },
     });
 

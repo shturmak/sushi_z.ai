@@ -17,19 +17,29 @@ datasource db {
 // ──────────────────────────────────────────────
 
 model Brand {
-  id             String   @id @default(cuid())
-  name           String
-  slug           String   @unique
-  slogan         String?
-  description    String?
-  primaryColor   String   @default("#e11d48")
-  secondaryColor String   @default("#f5f5f4")
-  logoUrl        String?
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  logoUrl         String?
+  primaryColor    String   @default("#e11d48")
+  secondaryColor  String?
+  accentColor     String?
+  heroBannerUrl   String?
+  promoBannerUrls String?  // JSON array of banner URLs — NOTE: For PostgreSQL, change to `Json` type
+  description     String?
+  slogan          String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  branches Branch[]
+  branches        Branch[]
+  categories      Category[]
+  products        Product[]
+  promotions      Promotion[]
+  orders          Order[]
+  carts           Cart[]
+  loyaltyAccounts LoyaltyAccount[]
+  users           User[]
 
   @@map("brands")
 }
@@ -39,23 +49,25 @@ model Brand {
 // ──────────────────────────────────────────────
 
 model User {
-  id            String    @id @default(cuid())
-  phone         String?   @unique
-  email         String?   @unique
-  passwordHash  String
-  firstName     String    @default("")
-  lastName      String    @default("")
-  role          String    @default("customer") // customer | admin | manager
-  avatarUrl     String?
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  phone        String?   @unique
+  email        String?   @unique
+  passwordHash String
+  firstName    String    @default("")
+  lastName     String    @default("")
+  role         String    @default("customer") // customer | admin | manager | super_admin
+  avatarUrl    String?
+  isActive     Boolean   @default(true)
+  brandId      String?   // admin's brand (null for super_admin)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  addresses     UserAddress[]
-  carts         Cart[]
-  orders        Order[]
-  sessions      UserSession[]
-  loyaltyAccount LoyaltyAccount?
+  addresses        UserAddress[]
+  carts            Cart[]
+  orders           Order[]
+  sessions         UserSession[]
+  loyaltyAccounts  LoyaltyAccount[]
+  brand            Brand?  @relation(fields: [brandId], references: [id], onDelete: SetNull)
 
   @@map("users")
 }
@@ -101,45 +113,46 @@ model UserAddress {
 // ──────────────────────────────────────────────
 
 model Branch {
-  id          String   @id @default(cuid())
-  brandId     String?
-  name        String
-  slug        String   @unique
-  address     String
-  phone       String?
-  email       String?
-  latitude    Float?
-  longitude   Float?
-  isOpen      Boolean  @default(true)
-  workSchedule String? // JSON: {"mon":"09:00-22:00",...} — NOTE: For PostgreSQL, change to `Json` type (see schema.postgresql.prisma)
-  description String?
-  imageUrl    String?
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  brandId       String
+  name          String
+  slug          String
+  address       String
+  phone         String?
+  email         String?
+  latitude      Float?
+  longitude     Float?
+  isOpen        Boolean  @default(true)
+  workSchedule  String?  // JSON: {"mon":"09:00-22:00",...} — NOTE: For PostgreSQL, change to `Json` type
+  description   String?
+  imageUrl      String?
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  brand        Brand?       @relation(fields: [brandId], references: [id], onDelete: SetNull)
-  categories   Category[]
-  orders       Order[]
+  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  categories    Category[]
+  orders        Order[]
   deliveryZones DeliveryZone[]
-  products     Product[]
-  carts        Cart[]
+  products      Product[]
+  carts         Cart[]
 
+  @@unique([brandId, slug])
   @@map("branches")
 }
 
 model DeliveryZone {
-  id          String   @id @default(cuid())
-  branchId    String
-  name        String
-  description String?
-  minOrder    Float    @default(0)    // minimum order amount
-  deliveryFee Float    @default(0)
-  estimatedMinutes Int @default(30)
-  polygonData String?                   // JSON polygon coordinates — NOTE: For PostgreSQL, change to `Json` type
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String   @id @default(cuid())
+  branchId         String
+  name             String
+  description      String?
+  minOrder         Float    @default(0)    // minimum order amount
+  deliveryFee      Float    @default(0)
+  estimatedMinutes Int      @default(30)
+  polygonData      String?                   // JSON polygon coordinates — NOTE: For PostgreSQL, change to `Json` type
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
 
@@ -151,26 +164,29 @@ model DeliveryZone {
 // ──────────────────────────────────────────────
 
 model Category {
-  id        String   @id @default(cuid())
-  branchId  String?
-  name      String
-  slug      String
+  id          String   @id @default(cuid())
+  brandId     String
+  branchId    String?  // null = brand-wide category
+  name        String
+  slug        String
   description String?
-  imageUrl  String?
-  sortOrder Int      @default(0)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  imageUrl    String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  branch   Branch?  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  brand   Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  branch  Branch?  @relation(fields: [branchId], references: [id], onDelete: Cascade)
   products Product[]
 
-  @@unique([branchId, slug])
+  @@unique([brandId, branchId, slug])
   @@map("categories")
 }
 
 model Product {
   id          String   @id @default(cuid())
+  brandId     String
   categoryId  String
   branchId    String?  // null = available at all branches
   name        String
@@ -185,8 +201,9 @@ model Product {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  category      Category             @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  branch        Branch?              @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  brand         Brand               @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  category      Category            @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  branch        Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
   optionGroups  ProductOptionGroup[]
   cartItems     CartItem[]
   orderItems    OrderItem[]
@@ -195,16 +212,16 @@ model Product {
 }
 
 model ProductOptionGroup {
-  id          String   @id @default(cuid())
-  productId   String
-  name        String   // e.g. "Size", "Spiciness"
-  isRequired  Boolean  @default(false)
-  maxChoices  Int      @default(1)   // 0 = unlimited
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
+  id         String  @id @default(cuid())
+  productId  String
+  name       String  // e.g. "Size", "Spiciness"
+  isRequired Boolean @default(false)
+  maxChoices Int     @default(1)   // 0 = unlimited
+  sortOrder  Int     @default(0)
+  createdAt  DateTime @default(now())
 
   product Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
-  options  ProductOption[]
+  options ProductOption[]
 
   @@map("product_option_groups")
 }
@@ -222,32 +239,35 @@ model ProductOption {
 }
 
 // ──────────────────────────────────────────────
-//  CART (server-side, per user)
+//  CART (server-side, per user per brand)
 // ──────────────────────────────────────────────
 
 model Cart {
   id        String   @id @default(cuid())
-  userId    String   @unique // one active cart per user
+  userId    String
+  brandId   String
   branchId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  branch  Branch     @relation(fields: [branchId], references: [id])
-  items   CartItem[]
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brand  Brand      @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  branch Branch     @relation(fields: [branchId], references: [id])
+  items  CartItem[]
 
+  @@unique([userId, brandId])
   @@map("carts")
 }
 
 model CartItem {
-  id          String   @id @default(cuid())
-  cartId      String
-  productId   String
-  quantity    Int      @default(1)
-  selectedOptions String? // JSON: [{optionId, groupId, name, priceDelta}, ...] — NOTE: For PostgreSQL, change to `Json` type
-  totalPrice  Float
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(cuid())
+  cartId          String
+  productId       String
+  quantity        Int      @default(1)
+  selectedOptions String?  // JSON: [{optionId, groupId, name, priceDelta}, ...] — NOTE: For PostgreSQL, change to `Json` type
+  totalPrice      Float
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])
@@ -278,6 +298,7 @@ model Order {
   id            String      @id @default(cuid())
   orderNumber   String      @unique  // human-readable: #1042
   userId        String
+  brandId       String
   branchId      String
   type          OrderType
   status        OrderStatus @default(new)
@@ -315,25 +336,26 @@ model Order {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  user        User        @relation(fields: [userId], references: [id])
-  branch      Branch      @relation(fields: [branchId], references: [id])
-  promotion   Promotion?  @relation(fields: [promotionId], references: [id])
-  items       OrderItem[]
-  payments    Payment[]
+  user      User        @relation(fields: [userId], references: [id])
+  brand     Brand       @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  branch    Branch      @relation(fields: [branchId], references: [id])
+  promotion Promotion?  @relation(fields: [promotionId], references: [id])
+  items     OrderItem[]
+  payments  Payment[]
 
   @@map("orders")
 }
 
 model OrderItem {
-  id               String   @id @default(cuid())
-  orderId          String
-  productId        String
-  productName      String   // snapshot
-  productPrice     Float    // snapshot
-  quantity         Int
-  selectedOptions  String?  // JSON snapshot — NOTE: For PostgreSQL, change to `Json` type
-  totalPrice       Float
-  createdAt        DateTime @default(now())
+  id              String   @id @default(cuid())
+  orderId         String
+  productId       String
+  productName     String   // snapshot
+  productPrice    Float    // snapshot
+  quantity        Int
+  selectedOptions String?  // JSON snapshot — NOTE: For PostgreSQL, change to `Json` type
+  totalPrice      Float
+  createdAt       DateTime @default(now())
 
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])
@@ -393,21 +415,23 @@ enum PromotionStatus {
 }
 
 model Promotion {
-  id           String         @id @default(cuid())
-  code         String?        @unique // null = auto-applied
-  name         String
-  description  String?
-  type         PromotionType
-  value        Float          // percentage value, fixed amount, etc.
-  minOrder     Float          @default(0)
-  maxUses      Int?           // null = unlimited
-  usedCount    Int            @default(0)
-  startDate    DateTime
-  endDate      DateTime
-  status       PromotionStatus @default(active)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id          String         @id @default(cuid())
+  code        String?        // null = auto-applied
+  name        String
+  description String?
+  type        PromotionType
+  value       Float          // percentage value, fixed amount, etc.
+  minOrder    Float          @default(0)
+  maxUses     Int?           // null = unlimited
+  usedCount   Int            @default(0)
+  startDate   DateTime
+  endDate     DateTime
+  status      PromotionStatus @default(active)
+  brandId     String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
+  brand  Brand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
   orders Order[]
 
   @@map("promotions")
@@ -426,7 +450,8 @@ enum LoyaltyTransactionType {
 
 model LoyaltyAccount {
   id          String              @id @default(cuid())
-  userId      String              @unique
+  userId      String
+  brandId     String
   balance     Float               @default(0)
   lifetime    Float               @default(0)
   tier        String              @default("bronze") // bronze, silver, gold
@@ -434,20 +459,22 @@ model LoyaltyAccount {
   updatedAt   DateTime            @updatedAt
 
   user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brand        Brand                @relation(fields: [brandId], references: [id], onDelete: Cascade)
   transactions LoyaltyTransaction[]
 
+  @@unique([userId, brandId])
   @@map("loyalty_accounts")
 }
 
 model LoyaltyTransaction {
-  id              String                   @id @default(cuid())
-  accountId       String
-  type            LoyaltyTransactionType
-  amount          Float
-  balanceAfter    Float
-  description     String?
-  relatedOrderId  String?
-  createdAt       DateTime                 @default(now())
+  id             String                   @id @default(cuid())
+  accountId      String
+  type           LoyaltyTransactionType
+  amount         Float
+  balanceAfter   Float
+  description    String?
+  relatedOrderId String?
+  createdAt      DateTime                 @default(now())
 
   account LoyaltyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
 

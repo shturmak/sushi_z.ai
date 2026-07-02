@@ -103,7 +103,7 @@ export async function createOrderFromCart(params: CreateOrderParams) {
   // 5. Handle bonus usage
   let bonusUsed = 0;
   if (params.useBonus && params.useBonus > 0) {
-    const loyalty = await db.loyaltyAccount.findUnique({ where: { userId: params.userId } });
+    const loyalty = await db.loyaltyAccount.findUnique({ where: { userId_brandId: { userId: params.userId, brandId: cart.brandId } } });
     if (!loyalty || loyalty.balance < params.useBonus)
       return { success: false as const, error: { code: 'INSUFFICIENT_BONUS', message: 'Not enough bonus points' } };
     bonusUsed = Math.min(params.useBonus, loyalty.balance, subtotal + deliveryFee - discount);
@@ -143,10 +143,10 @@ export async function createOrderFromCart(params: CreateOrderParams) {
 
     // Deduct bonus
     if (bonusUsed > 0) {
-      const loy = await tx.loyaltyAccount.findUnique({ where: { userId: params.userId } });
+      const loy = await tx.loyaltyAccount.findUnique({ where: { userId_brandId: { userId: params.userId, brandId: cart.brandId } } });
       if (loy) {
         const nb = Math.max(0, loy.balance - bonusUsed);
-        await tx.loyaltyAccount.update({ where: { userId: params.userId }, data: { balance: nb } });
+        await tx.loyaltyAccount.update({ where: { userId_brandId: { userId: params.userId, brandId: cart.brandId } }, data: { balance: nb } });
         await tx.loyaltyTransaction.create({
           data: { accountId: loy.id, type: 'spent' as const, amount: -bonusUsed, balanceAfter: nb,
             description: `Бонуси для ${orderNumber}`, relatedOrderId: newOrder.id },
@@ -155,13 +155,13 @@ export async function createOrderFromCart(params: CreateOrderParams) {
     }
 
     // Earn bonus (5%)
-    const loy = await tx.loyaltyAccount.findUnique({ where: { userId: params.userId } });
+    const loy = await tx.loyaltyAccount.findUnique({ where: { userId_brandId: { userId: params.userId, brandId: cart.brandId } } });
     if (loy) {
       const earned = Math.round(total * 0.05);
       const newLifetime = loy.lifetime + total;
       const newBal = loy.balance - bonusUsed + earned;
       const newTier = newLifetime >= 10000 ? 'gold' : newLifetime >= 3000 ? 'silver' : 'bronze';
-      await tx.loyaltyAccount.update({ where: { userId: params.userId }, data: { balance: newBal, lifetime: newLifetime, tier: newTier } });
+      await tx.loyaltyAccount.update({ where: { userId_brandId: { userId: params.userId, brandId: cart.brandId } }, data: { balance: newBal, lifetime: newLifetime, tier: newTier } });
       await tx.loyaltyTransaction.create({
         data: { accountId: loy.id, type: 'earned' as const, amount: earned, balanceAfter: newBal,
           description: `Бонуси за ${orderNumber}`, relatedOrderId: newOrder.id },
@@ -207,10 +207,10 @@ export async function cancelOrder(orderId: string, userId: string) {
   await db.order.update({ where: { id: orderId }, data: { status: 'cancelled', cancelledAt: new Date() } });
 
   if (order.bonusUsed > 0) {
-    const loy = await db.loyaltyAccount.findUnique({ where: { userId } });
+    const loy = await db.loyaltyAccount.findUnique({ where: { userId_brandId: { userId, brandId: order.brandId } } });
     if (loy) {
       const nb = loy.balance + order.bonusUsed;
-      await db.loyaltyAccount.update({ where: { userId }, data: { balance: nb } });
+      await db.loyaltyAccount.update({ where: { userId_brandId: { userId, brandId: order.brandId } }, data: { balance: nb } });
       await db.loyaltyTransaction.create({
         data: { accountId: loy.id, type: 'adjusted' as const, amount: order.bonusUsed, balanceAfter: nb,
           description: `Повернення бонусів при скасуванні ${order.orderNumber}`, relatedOrderId: orderId },
