@@ -9,6 +9,41 @@ interface User {
   role: string;
 }
 
+export interface BrandInfo {
+  id: string;
+  name: string;
+  slug: string;
+  slogan?: string | null;
+  description?: string | null;
+  primaryColor: string;
+  secondaryColor: string;
+  logoUrl?: string | null;
+}
+
+// ── Brand store (storefront) ──────────────────────────────
+
+interface BrandState {
+  brand: BrandInfo | null;
+  setBrand: (brand: BrandInfo) => void;
+  clearBrand: () => void;
+}
+
+export const useBrand = create<BrandState>((set) => ({
+  brand: null,
+  setBrand: (brand) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sc_brand', brand.slug);
+    }
+    set({ brand });
+  },
+  clearBrand: () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('sc_brand');
+    }
+    set({ brand: null });
+  },
+}));
+
 interface AuthState {
   user: User | null;
   accessToken: string | null;
@@ -84,6 +119,7 @@ export const API = {
   },
   cart: {
     get: () => apiFetch('/api/cart'),
+    getOrCreate: () => apiFetch('/api/cart'),
     create: (branchId: string) => apiFetch('/api/cart', { method: 'POST', body: JSON.stringify({ branchId }) }),
     addItem: (data: any) => apiFetch('/api/cart/items', { method: 'POST', body: JSON.stringify(data) }),
     updateItem: (id: string, quantity: number) => apiFetch(`/api/cart/items/${id}`, { method: 'PUT', body: JSON.stringify({ quantity }) }),
@@ -107,6 +143,9 @@ export const API = {
   },
   addresses: {
     list: () => apiFetch('/api/addresses'),
+  },
+  brands: {
+    list: () => apiFetch('/api/brands'),
   },
   admin: {
     analytics: () => apiFetch('/api/admin/analytics'),

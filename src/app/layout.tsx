@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Суші Мастер — Адмін-панель",
-  description: "Адмін-панель мережі суші-ресторанів Суші Мастер",
+  title: "SushiChain — Замовляй улюблену їжу",
+  description: "White-label платформа для замовлення їди з доставкою",
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },

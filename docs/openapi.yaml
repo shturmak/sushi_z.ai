@@ -1,0 +1,3041 @@
+openapi: "3.0.3"
+info:
+  title: SushiChain Food Ordering API
+  description: |
+    Complete REST API for the SushiChain omnichannel food ordering platform.
+    Covers authentication, menu browsing, cart management, order lifecycle,
+    payments, promotions, loyalty program, and full admin back-office.
+  version: "1.0.0"
+  contact:
+    name: SushiChain API Support
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Auth
+    description: Authentication (login, register, token refresh, logout)
+  - name: User Profile
+    description: Current user profile and addresses
+  - name: Branches
+    description: Public branch listing and delivery zones
+  - name: Menu
+    description: Public menu categories and product details
+  - name: Cart
+    description: Server-side shopping cart (authenticated)
+  - name: Orders
+    description: Customer order management
+  - name: Payments
+    description: Payment intent creation and provider webhooks
+  - name: Promotions
+    description: Public promotion listing and code validation
+  - name: Loyalty
+    description: Loyalty account balance and transaction history
+  - name: Admin
+    description: Admin/manager back-office endpoints
+
+paths:
+  # ============================================================
+  #  AUTH
+  # ============================================================
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      description: Authenticate with email or phone + password. Returns JWT access token, refresh token, user profile, and loyalty info.
+      operationId: authLogin
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: User email (provide email OR phone)
+                phone:
+                  type: string
+                  description: User phone (provide email OR phone)
+                password:
+                  type: string
+                  description: User password
+              example:
+                email: admin@sushichain.com
+                password: admin123
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register
+      description: Create a new user account. Returns tokens, user profile, and loyalty account.
+      operationId: authRegister
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                phone:
+                  type: string
+                  description: User phone (phone OR email required)
+                email:
+                  type: string
+                  format: email
+                  description: User email (phone OR email required)
+                password:
+                  type: string
+                  description: Password (min 1 char in current impl)
+                firstName:
+                  type: string
+                  default: ""
+                lastName:
+                  type: string
+                  default: ""
+              example:
+                email: user@example.com
+                password: mypassword
+                firstName: John
+                lastName: Doe
+      responses:
+        "201":
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout
+      description: Invalidate a refresh token, ending the session.
+      operationId: authLogout
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+                  description: The refresh token to invalidate
+      responses:
+        "200":
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessNull"
+
+  /api/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      description: Exchange a valid refresh token for a new access token.
+      operationId: authRefresh
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        "200":
+          description: New access token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    type: object
+                    required: [accessToken]
+                    properties:
+                      accessToken:
+                        type: string
+                        description: New JWT access token (15 min TTL)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/auth/profile:
+    get:
+      tags: [Auth]
+      summary: Get auth profile
+      description: Returns the authenticated user's full profile including loyalty account details.
+      operationId: getAuthProfile
+      responses:
+        "200":
+          description: Profile with loyalty info
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    $ref: "#/components/schemas/UserProfileWithLoyalty"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ============================================================
+  #  USER PROFILE
+  # ============================================================
+  /api/me:
+    get:
+      tags: [User Profile]
+      summary: Get current user
+      description: Get the authenticated user's profile.
+      operationId: getMe
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessData"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      tags: [User Profile]
+      summary: Update profile
+      description: Update first name, last name, or email of the current user.
+      operationId: updateMe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                email:
+                  type: string
+                  format: email
+              example:
+                firstName: John
+                lastName: Doe
+      responses:
+        "200":
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessData"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/me/loyalty:
+    get:
+      tags: [Loyalty]
+      summary: Get loyalty balance
+      description: Get the authenticated user's loyalty account (balance, lifetime, tier).
+      operationId: getMyLoyalty
+      responses:
+        "200":
+          description: Loyalty account info
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    $ref: "#/components/schemas/LoyaltyAccount"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/addresses:
+    get:
+      tags: [User Profile]
+      summary: List saved addresses
+      description: Get all saved delivery addresses for the authenticated user, sorted by default first.
+      operationId: listAddresses
+      responses:
+        "200":
+          description: List of addresses
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/UserAddress"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [User Profile]
+      summary: Create address
+      description: Save a new delivery address. If isDefault is true, all other addresses are unset as default.
+      operationId: createAddress
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddressInput"
+      responses:
+        "201":
+          description: Address created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessData"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/addresses/{addressId}:
+    get:
+      tags: [User Profile]
+      summary: Get address
+      description: Get a specific saved address by ID.
+      operationId: getAddress
+      parameters:
+        - $ref: "#/components/parameters/addressId"
+      responses:
+        "200":
+          description: Address details
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    $ref: "#/components/schemas/UserAddress"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      tags: [User Profile]
+      summary: Update address
+      description: Update fields of a saved address.
+      operationId: updateAddress
+      parameters:
+        - $ref: "#/components/parameters/addressId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddressInput"
+      responses:
+        "200":
+          description: Address updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessData"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags: [User Profile]
+      summary: Delete address
+      description: Remove a saved address.
+      operationId: deleteAddress
+      parameters:
+        - $ref: "#/components/parameters/addressId"
+      responses:
+        "200":
+          description: Address deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessNull"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ============================================================
+  #  BRANCHES (Public)
+  # ============================================================
+  /api/branches:
+    get:
+      tags: [Branches]
+      summary: List branches
+      description: Get all branches. Filter by open/closed status.
+      operationId: listBranches
+      security: []
+      parameters:
+        - name: isOpen
+          in: query
+          schema:
+            type: string
+            enum: ["true", "false"]
+          description: Filter by open/closed status
+      responses:
+        "200":
+          description: List of branches
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Branch"
+
+  /api/branches/{branchId}:
+    get:
+      tags: [Branches]
+      summary: Get branch detail
+      description: Get a single branch with active delivery zones and product/category counts.
+      operationId: getBranch
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/branchId"
+      responses:
+        "200":
+          description: Branch with delivery zones and counts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/Branch"
+                      - type: object
+                        properties:
+                          deliveryZones:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/DeliveryZone"
+                          _count:
+                            type: object
+                            properties:
+                              categories:
+                                type: integer
+                              products:
+                                type: integer
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/branches/{branchId}/delivery-zones:
+    get:
+      tags: [Branches]
+      summary: Get delivery zones
+      description: Get all active delivery zones for a branch.
+      operationId: getDeliveryZones
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/branchId"
+      responses:
+        "200":
+          description: List of delivery zones
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DeliveryZone"
+
+  # ============================================================
+  #  MENU (Public)
+  # ============================================================
+  /api/menu:
+    get:
+      tags: [Menu]
+      summary: Get menu
+      description: >
+        Get the full menu for a branch — categories with their products
+        (including option groups and options). Only active categories and
+        available products are returned.
+      operationId: getMenu
+      security: []
+      parameters:
+        - name: branchId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Branch ID to load menu for
+      responses:
+        "200":
+          description: Menu categories with nested products
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CategoryWithProducts"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/menu/{productId}:
+    get:
+      tags: [Menu]
+      summary: Get product detail
+      description: Get a single product with its category and all option groups/options.
+      operationId: getProduct
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/productId"
+      responses:
+        "200":
+          description: Product with option groups
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    $ref: "#/components/schemas/ProductWithOptions"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ============================================================
+  #  CART
+  # ============================================================
+  /api/cart:
+    get:
+      tags: [Cart]
+      summary: Get cart
+      description: Get the authenticated user's cart with items, products, branch info, and computed totals.
+      operationId: getCart
+      responses:
+        "200":
+          description: Cart with items and totals
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    oneOf:
+                      - type: object
+                        description: Cart object (null if no cart)
+                        nullable: true
+                      - $ref: "#/components/schemas/CartWithTotals"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Cart]
+      summary: Create cart
+      description: Create a new cart for the given branch. One cart per user; returns 409 if cart already exists.
+      operationId: createCart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [branchId]
+              properties:
+                branchId:
+                  type: string
+                  description: Branch ID to associate the cart with
+      responses:
+        "201":
+          description: Cart created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessData"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags: [Cart]
+      summary: Clear cart
+      description: Delete the authenticated user's cart and all its items.
+      operationId: clearCart
+      responses:
+        "200":
+          description: Cart cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessNull"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/cart/items:
+    post:
+      tags: [Cart]
+      summary: Add item to cart
+      description: Add a product to the authenticated user's cart with optional selected options.
+      operationId: addCartItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [productId, quantity]
+              properties:
+                productId:
+                  type: string
+                  description: Product ID to add
+                quantity:
+                  type: integer
+                  minimum: 1
+                  description: Quantity to add
+                selectedOptions:
+                  type: array
+                  description: Selected option configurations
+                  items:
+                    type: object
+                    required: [optionId, groupId, name]
+                    properties:
+                      optionId:
+                        type: string
+                      groupId:
+                        type: string
+                      name:
+                        type: string
+                        example: "Large +80 UAH"
+                      priceDelta:
+                        type: number
+                        default: 0
+              example:
+                productId: clxxxxx
+                quantity: 2
+                selectedOptions:
+                  - optionId: opt1
+                    groupId: grp1
+                    name: "Large"
+                    priceDelta: 80
+      responses:
+        "201":
+          description: Item added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessData"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/cart/items/{cartItemId}:
+    put:
+      tags: [Cart]
+      summary: Update cart item quantity
+      description: Change the quantity of a cart item. Total price is recalculated automatically.
+      operationId: updateCartItem
+      parameters:
+        - $ref: "#/components/parameters/cartItemId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantity]
+              properties:
+                quantity:
+                  type: integer
+                  minimum: 1
+      responses:
+        "200":
+          description: Cart item updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessData"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags: [Cart]
+      summary: Remove cart item
+      description: Remove an item from the cart.
+      operationId: removeCartItem
+      parameters:
+        - $ref: "#/components/parameters/cartItemId"
+      responses:
+        "200":
+          description: Item removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessNull"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ============================================================
+  #  ORDERS (Customer)
+  # ============================================================
+  /api/orders:
+    get:
+      tags: [Orders]
+      summary: List my orders
+      description: Get paginated list of the authenticated user's orders with branch, items, and payment info.
+      operationId: listMyOrders
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [new, confirmed, cooking, ready, delivering, completed, cancelled]
+          description: Filter by order status
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/limit"
+      responses:
+        "200":
+          description: Paginated orders
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    $ref: "#/components/schemas/PaginatedOrders"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Orders]
+      summary: Create order
+      description: |
+        Place an order from the current cart. The cart is consumed (cleared) on success.
+        Supports delivery and pickup, promotion codes, and bonus point usage.
+        Creates a payment record automatically. For card payments, call /api/payments/intent next.
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderInput"
+      responses:
+        "201":
+          description: Order created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  message:
+                    type: string
+                    example: "Order created successfully"
+                  data:
+                    $ref: "#/components/schemas/Order"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/orders/{orderId}:
+    get:
+      tags: [Orders]
+      summary: Get order detail
+      description: Get full order detail with items, branch info, payments, and promotion. Customers can only view their own orders (admins can view any).
+      operationId: getOrder
+      parameters:
+        - $ref: "#/components/parameters/orderId"
+      responses:
+        "200":
+          description: Order detail
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    $ref: "#/components/schemas/OrderDetail"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/orders/{orderId}/cancel:
+    post:
+      tags: [Orders]
+      summary: Cancel order
+      description: Cancel an order. Only possible in 'new' or 'confirmed' status. Used bonus points are refunded.
+      operationId: cancelOrder
+      parameters:
+        - $ref: "#/components/parameters/orderId"
+      responses:
+        "200":
+          description: Order cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessNull"
+        "400":
+          description: Cancellation failed (invalid status transition)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/orders/{orderId}/repeat:
+    post:
+      tags: [Orders]
+      summary: Repeat order
+      description: Re-populate the cart with items from a previous order (only available items). Replaces any existing cart.
+      operationId: repeatOrder
+      parameters:
+        - $ref: "#/components/parameters/orderId"
+      responses:
+        "200":
+          description: Cart populated from previous order
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  message:
+                    type: string
+                    example: "Cart populated from previous order"
+                  data:
+                    $ref: "#/components/schemas/CartWithTotals"
+        "400":
+          description: Reorder failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/orders/{orderId}/status:
+    put:
+      tags: [Orders]
+      summary: Update order status (admin)
+      description: >
+        Transition an order to a new status. Follows the state machine:
+        new → confirmed → cooking → ready → delivering → completed.
+      operationId: updateOrderStatus
+      parameters:
+        - $ref: "#/components/parameters/orderId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [new, confirmed, cooking, ready, delivering, completed, cancelled]
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessData"
+        "400":
+          description: Invalid status or transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ============================================================
+  #  PAYMENTS
+  # ============================================================
+  /api/payments/intent:
+    post:
+      tags: [Payments]
+      summary: Create payment intent
+      description: Create a payment intent for a card payment. In production, this would call a real payment provider (LiqPay/Stripe/Portmone). Currently returns a simulated payment URL.
+      operationId: createPaymentIntent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orderId]
+              properties:
+                orderId:
+                  type: string
+      responses:
+        "200":
+          description: Payment intent created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    type: object
+                    required: [paymentId, providerTxId, amount, paymentUrl]
+                    properties:
+                      paymentId:
+                        type: string
+                      providerTxId:
+                        type: string
+                        example: "txn_1718000000000_abc123"
+                      amount:
+                        type: number
+                      paymentUrl:
+                        type: string
+                        format: uri
+                        example: "https://payment-provider.example.com/pay/txn_xxx"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/payments/webhook/{provider}:
+    post:
+      tags: [Payments]
+      summary: Payment webhook
+      description: Webhook endpoint called by payment providers (LiqPay, Portmone, etc.) to notify about payment status changes. Automatically confirms orders on successful payment.
+      operationId: paymentWebhook
+      security: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            example: liqpay
+          description: Payment provider identifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                providerTxId:
+                  type: string
+                status:
+                  type: string
+                  enum: [success, failure, pending]
+      responses:
+        "200":
+          description: Webhook processed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    type: object
+                    properties:
+                      received:
+                        type: boolean
+
+  # ============================================================
+  #  PROMOTIONS (Public)
+  # ============================================================
+  /api/promotions:
+    get:
+      tags: [Promotions]
+      summary: List active promotions
+      description: Get all currently active promotions (within date range).
+      operationId: listPromotions
+      security: []
+      responses:
+        "200":
+          description: Active promotions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Promotion"
+
+  /api/promotions/validate:
+    post:
+      tags: [Promotions]
+      summary: Validate promotion code
+      description: Check if a promotion code is valid for the given subtotal. Returns the promotion details and calculated discount.
+      operationId: validatePromotion
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, subtotal]
+              properties:
+                code:
+                  type: string
+                  description: Promotion code to validate
+                subtotal:
+                  type: number
+                  minimum: 0.01
+                  description: Cart subtotal for minimum order check
+      responses:
+        "200":
+          description: Promotion is valid
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    $ref: "#/components/schemas/ValidatedPromotion"
+        "400":
+          description: Invalid or expired promotion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ============================================================
+  #  LOYALTY
+  # ============================================================
+  /api/loyalty/transactions:
+    get:
+      tags: [Loyalty]
+      summary: Get loyalty transactions
+      description: Get the last 50 loyalty transactions for the authenticated user.
+      operationId: getLoyaltyTransactions
+      responses:
+        "200":
+          description: Transaction history
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/LoyaltyTransaction"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ============================================================
+  #  ADMIN — Analytics
+  # ============================================================
+  /api/admin/analytics:
+    get:
+      tags: [Admin]
+      summary: Get dashboard analytics
+      description: >
+        Get KPIs — order counts (today/week/month), revenue, status
+        distribution, top products, and recent orders.
+      operationId: getAnalytics
+      responses:
+        "200":
+          description: Analytics data
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    $ref: "#/components/schemas/Analytics"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ============================================================
+  #  ADMIN — Orders
+  # ============================================================
+  /api/admin/orders:
+    get:
+      tags: [Admin]
+      summary: List all orders
+      description: Paginated list of all orders with customer info, branch, items, and payments.
+      operationId: adminListOrders
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [new, confirmed, cooking, ready, delivering, completed, cancelled]
+        - name: branchId
+          in: query
+          schema:
+            type: string
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/limit"
+      responses:
+        "200":
+          description: Paginated orders
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    $ref: "#/components/schemas/PaginatedOrders"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/orders/{orderId}/status:
+    put:
+      tags: [Admin]
+      summary: Update order status and note
+      description: Update order status (with state machine validation) and optionally the customer note.
+      operationId: adminUpdateOrderStatus
+      parameters:
+        - $ref: "#/components/parameters/orderId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [new, confirmed, cooking, ready, delivering, completed, cancelled]
+                note:
+                  type: string
+                  nullable: true
+      responses:
+        "200":
+          description: Order updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessNull"
+        "400":
+          description: Invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ============================================================
+  #  ADMIN — Branches
+  # ============================================================
+  /api/admin/branches:
+    get:
+      tags: [Admin]
+      summary: List all branches (admin)
+      description: List branches with order and category counts.
+      operationId: adminListBranches
+      responses:
+        "200":
+          description: Branches with counts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: "#/components/schemas/Branch"
+                        - type: object
+                          properties:
+                            _count:
+                              type: object
+                              properties:
+                                orders:
+                                  type: integer
+                                categories:
+                                  type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Admin]
+      summary: Create branch
+      description: Create a new branch.
+      operationId: adminCreateBranch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BranchInput"
+      responses:
+        "201":
+          description: Branch created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessData"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/branches/{branchId}:
+    get:
+      tags: [Admin]
+      summary: Get branch (admin)
+      description: Get branch with delivery zones and order count.
+      operationId: adminGetBranch
+      parameters:
+        - $ref: "#/components/parameters/branchId"
+      responses:
+        "200":
+          description: Branch detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessData"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      tags: [Admin]
+      summary: Update branch
+      description: Update any branch fields.
+      operationId: adminUpdateBranch
+      parameters:
+        - $ref: "#/components/parameters/branchId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BranchInput"
+      responses:
+        "200":
+          description: Branch updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessData"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    delete:
+      tags: [Admin]
+      summary: Delete branch
+      description: Delete a branch and all associated data.
+      operationId: adminDeleteBranch
+      parameters:
+        - $ref: "#/components/parameters/branchId"
+      responses:
+        "200":
+          description: Branch deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessNull"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ============================================================
+  #  ADMIN — Menu Categories
+  # ============================================================
+  /api/admin/menu/categories:
+    get:
+      tags: [Admin]
+      summary: List all categories
+      description: List all menu categories with branch name and product count.
+      operationId: adminListCategories
+      responses:
+        "200":
+          description: Categories
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: "#/components/schemas/Category"
+                        - type: object
+                          properties:
+                            branch:
+                              type: object
+                              properties:
+                                name:
+                                  type: string
+                            _count:
+                              type: object
+                              properties:
+                                products:
+                                  type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Admin]
+      summary: Create category
+      description: Create a new menu category.
+      operationId: adminCreateCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, slug]
+              properties:
+                branchId:
+                  type: string
+                  nullable: true
+                  description: Branch ID (null = available at all branches)
+                name:
+                  type: string
+                slug:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+                sortOrder:
+                  type: integer
+                  default: 0
+      responses:
+        "201":
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessData"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/menu/categories/{categoryId}:
+    put:
+      tags: [Admin]
+      summary: Update category
+      description: Update any category fields.
+      operationId: adminUpdateCategory
+      parameters:
+        - $ref: "#/components/parameters/categoryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Any subset of category fields
+              properties:
+                name:
+                  type: string
+                slug:
+                  type: string
+                description:
+                  type: string
+                imageUrl:
+                  type: string
+                sortOrder:
+                  type: integer
+                isActive:
+                  type: boolean
+      responses:
+        "200":
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessData"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    delete:
+      tags: [Admin]
+      summary: Delete category
+      description: Delete a menu category and all its products.
+      operationId: adminDeleteCategory
+      parameters:
+        - $ref: "#/components/parameters/categoryId"
+      responses:
+        "200":
+          description: Category deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessNull"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ============================================================
+  #  ADMIN — Menu Products
+  # ============================================================
+  /api/admin/menu/products:
+    get:
+      tags: [Admin]
+      summary: List all products
+      description: List all products with category, branch, and option groups.
+      operationId: adminListProducts
+      responses:
+        "200":
+          description: Products
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: "#/components/schemas/Product"
+                        - type: object
+                          properties:
+                            category:
+                              type: object
+                              properties:
+                                name:
+                                  type: string
+                            branch:
+                              type: object
+                              nullable: true
+                              properties:
+                                name:
+                                  type: string
+                            optionGroups:
+                              type: array
+                              items:
+                                $ref: "#/components/schemas/ProductOptionGroup"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Admin]
+      summary: Create product
+      description: Create a new product with optional option groups and options.
+      operationId: adminCreateProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessData"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/menu/products/{productId}:
+    get:
+      tags: [Admin]
+      summary: Get product (admin)
+      description: Get a single product with category and option groups.
+      operationId: adminGetProduct
+      parameters:
+        - $ref: "#/components/parameters/productId"
+      responses:
+        "200":
+          description: Product detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessData"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      tags: [Admin]
+      summary: Update product
+      description: Update a product and optionally rebuild its option groups.
+      operationId: adminUpdateProduct
+      parameters:
+        - $ref: "#/components/parameters/productId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductUpdateInput"
+      responses:
+        "200":
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessData"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    delete:
+      tags: [Admin]
+      summary: Delete product
+      description: Delete a product and all its option groups/options.
+      operationId: adminDeleteProduct
+      parameters:
+        - $ref: "#/components/parameters/productId"
+      responses:
+        "200":
+          description: Product deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessNull"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ============================================================
+  #  ADMIN — Promotions
+  # ============================================================
+  /api/admin/promotions:
+    get:
+      tags: [Admin]
+      summary: List all promotions
+      description: List all promotions including inactive and expired.
+      operationId: adminListPromotions
+      responses:
+        "200":
+          description: All promotions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Promotion"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Admin]
+      summary: Create promotion
+      description: Create a new promotion.
+      operationId: adminCreatePromotion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromotionInput"
+      responses:
+        "201":
+          description: Promotion created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessData"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/promotions/{promotionId}:
+    put:
+      tags: [Admin]
+      summary: Update promotion
+      description: Update any promotion fields.
+      operationId: adminUpdatePromotion
+      parameters:
+        - $ref: "#/components/parameters/promotionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromotionInput"
+      responses:
+        "200":
+          description: Promotion updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessData"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    delete:
+      tags: [Admin]
+      summary: Delete promotion
+      description: Delete a promotion.
+      operationId: adminDeletePromotion
+      parameters:
+        - $ref: "#/components/parameters/promotionId"
+      responses:
+        "200":
+          description: Promotion deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessNull"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+# ============================================================
+#  COMPONENTS
+# ============================================================
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "JWT access token (15 min TTL). Obtain via /api/auth/login or /api/auth/refresh."
+
+  parameters:
+    branchId:
+      name: branchId
+      in: path
+      required: true
+      schema:
+        type: string
+    orderId:
+      name: orderId
+      in: path
+      required: true
+      schema:
+        type: string
+    productId:
+      name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+    categoryId:
+      name: categoryId
+      in: path
+      required: true
+      schema:
+        type: string
+    promotionId:
+      name: promotionId
+      in: path
+      required: true
+      schema:
+        type: string
+    addressId:
+      name: addressId
+      in: path
+      required: true
+      schema:
+        type: string
+    cartItemId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Cart item ID
+    page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+    limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+
+  responses:
+    Unauthorized:
+      description: Unauthorized — missing or invalid token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error:
+              code: UNAUTHORIZED
+              message: Unauthorized
+    Forbidden:
+      description: Forbidden — insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error:
+              code: FORBIDDEN
+              message: Admin access required
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error:
+              code: NOT_FOUND
+              message: Not found
+    ValidationError:
+      description: Validation error in request body or parameters
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error:
+              code: VALIDATION_ERROR
+              message: branchId query parameter is required
+    Conflict:
+      description: Conflict — resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error:
+              code: CONFLICT
+              message: Email already registered
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error:
+              code: INTERNAL_ERROR
+              message: Operation failed
+
+  schemas:
+    # ---------- Response Envelope ----------
+    SuccessNull:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          nullable: true
+          description: null for destructive operations
+        message:
+          type: string
+          example: "Cart cleared"
+
+    SuccessData:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data: {}
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required: [success, error]
+      properties:
+        success:
+          type: boolean
+          const: false
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              description: Human-readable error message
+              example: branchId is required
+            details:
+              description: Optional additional error details
+
+    # ---------- Auth ----------
+    LoginResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          const: true
+        message:
+          type: string
+          example: "Registration successful"
+        data:
+          type: object
+          required: [user, loyalty, accessToken, refreshToken]
+          properties:
+            user:
+              $ref: "#/components/schemas/UserBasic"
+            loyalty:
+              type: object
+              required: [balance, tier]
+              properties:
+                balance:
+                  type: number
+                  default: 0
+                tier:
+                  type: string
+                  enum: [bronze, silver, gold]
+                  default: bronze
+            accessToken:
+              type: string
+              description: "JWT access token (15 min TTL)"
+            refreshToken:
+              type: string
+              description: "Opaque refresh token (30 day TTL)"
+
+    UserBasic:
+      type: object
+      required: [id, role]
+      properties:
+        id:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+          nullable: true
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+          enum: [customer, admin, manager]
+
+    UserProfileWithLoyalty:
+      type: object
+      required: [id, role]
+      properties:
+        id:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+          nullable: true
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+          enum: [customer, admin, manager]
+        avatarUrl:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        loyalty:
+          type: object
+          nullable: true
+          properties:
+            balance:
+              type: number
+            lifetime:
+              type: number
+            tier:
+              type: string
+              enum: [bronze, silver, gold]
+
+    # ---------- Address ----------
+    UserAddress:
+      type: object
+      required: [id, userId, street]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        label:
+          type: string
+          nullable: true
+          example: "Home"
+        street:
+          type: string
+        building:
+          type: string
+          nullable: true
+        apartment:
+          type: string
+          nullable: true
+        floor:
+          type: string
+          nullable: true
+        entrance:
+          type: string
+          nullable: true
+        comment:
+          type: string
+          nullable: true
+        latitude:
+          type: number
+          format: double
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          nullable: true
+        isDefault:
+          type: boolean
+          default: false
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AddressInput:
+      type: object
+      required: [street]
+      properties:
+        label:
+          type: string
+          nullable: true
+        street:
+          type: string
+        building:
+          type: string
+          nullable: true
+        apartment:
+          type: string
+          nullable: true
+        floor:
+          type: string
+          nullable: true
+        entrance:
+          type: string
+          nullable: true
+        comment:
+          type: string
+          nullable: true
+        latitude:
+          type: number
+          format: double
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          nullable: true
+        isDefault:
+          type: boolean
+          default: false
+
+    # ---------- Branch ----------
+    Branch:
+      type: object
+      required: [id, name, slug, address, isOpen]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+          nullable: true
+        latitude:
+          type: number
+          format: double
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          nullable: true
+        isOpen:
+          type: boolean
+        workSchedule:
+          type: string
+          nullable: true
+          description: JSON schedule object e.g. {"mon":"09:00-22:00",...}
+        description:
+          type: string
+          nullable: true
+        imageUrl:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    BranchInput:
+      type: object
+      required: [name, slug, address]
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+          nullable: true
+        latitude:
+          type: number
+          format: double
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          nullable: true
+        isOpen:
+          type: boolean
+          default: true
+        workSchedule:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+
+    DeliveryZone:
+      type: object
+      required: [id, branchId, name, minOrder, deliveryFee, estimatedMinutes, isActive]
+      properties:
+        id:
+          type: string
+        branchId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        minOrder:
+          type: number
+          description: Minimum order amount for this zone
+        deliveryFee:
+          type: number
+        estimatedMinutes:
+          type: integer
+        polygonData:
+          type: string
+          nullable: true
+          description: JSON polygon coordinates
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # ---------- Menu ----------
+    Category:
+      type: object
+      required: [id, name, slug, isActive]
+      properties:
+        id:
+          type: string
+        branchId:
+          type: string
+          nullable: true
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+          nullable: true
+        imageUrl:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CategoryWithProducts:
+      type: object
+      required: [id, name, slug, products]
+      properties:
+        id:
+          type: string
+        branchId:
+          type: string
+          nullable: true
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+          nullable: true
+        imageUrl:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        isActive:
+          type: boolean
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductWithOptions"
+
+    Product:
+      type: object
+      required: [id, categoryId, name, slug, price, isAvailable]
+      properties:
+        id:
+          type: string
+        categoryId:
+          type: string
+        branchId:
+          type: string
+          nullable: true
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+          nullable: true
+        imageUrl:
+          type: string
+          nullable: true
+        price:
+          type: number
+        weight:
+          type: string
+          nullable: true
+          example: "350g"
+        calories:
+          type: integer
+          nullable: true
+        isAvailable:
+          type: boolean
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ProductWithOptions:
+      allOf:
+        - $ref: "#/components/schemas/Product"
+        - type: object
+          properties:
+            category:
+              $ref: "#/components/schemas/Category"
+            optionGroups:
+              type: array
+              items:
+                $ref: "#/components/schemas/ProductOptionGroup"
+
+    ProductOptionGroup:
+      type: object
+      required: [id, productId, name, isRequired, maxChoices]
+      properties:
+        id:
+          type: string
+        productId:
+          type: string
+        name:
+          type: string
+          example: "Size"
+        isRequired:
+          type: boolean
+          default: false
+        maxChoices:
+          type: integer
+          default: 1
+          description: "0 = unlimited"
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductOption"
+
+    ProductOption:
+      type: object
+      required: [id, groupId, name, priceDelta]
+      properties:
+        id:
+          type: string
+        groupId:
+          type: string
+        name:
+          type: string
+          example: "Large +80 UAH"
+        priceDelta:
+          type: number
+          default: 0
+          description: Additional cost for this option
+        sortOrder:
+          type: integer
+
+    ProductInput:
+      type: object
+      required: [categoryId, name, slug, price]
+      properties:
+        categoryId:
+          type: string
+        branchId:
+          type: string
+          nullable: true
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+          nullable: true
+        price:
+          type: number
+        weight:
+          type: string
+          nullable: true
+        calories:
+          type: integer
+          nullable: true
+        isAvailable:
+          type: boolean
+          default: true
+        sortOrder:
+          type: integer
+          default: 0
+        optionGroups:
+          type: array
+          items:
+            type: object
+            required: [name]
+            properties:
+              name:
+                type: string
+              isRequired:
+                type: boolean
+                default: false
+              maxChoices:
+                type: integer
+                default: 1
+              sortOrder:
+                type: integer
+                default: 0
+              options:
+                type: array
+                items:
+                  type: object
+                  required: [name]
+                  properties:
+                    name:
+                      type: string
+                    priceDelta:
+                      type: number
+                      default: 0
+                    sortOrder:
+                      type: integer
+                      default: 0
+
+    ProductUpdateInput:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        price:
+          type: number
+        weight:
+          type: string
+          nullable: true
+        calories:
+          type: integer
+          nullable: true
+        isAvailable:
+          type: boolean
+        sortOrder:
+          type: integer
+        optionGroups:
+          type: array
+          description: "If provided, all existing option groups are replaced"
+          items:
+            type: object
+            required: [name]
+            properties:
+              name:
+                type: string
+              isRequired:
+                type: boolean
+              maxChoices:
+                type: integer
+              sortOrder:
+                type: integer
+              options:
+                type: array
+                items:
+                  type: object
+                  required: [name]
+                  properties:
+                    name:
+                      type: string
+                    priceDelta:
+                      type: number
+                    sortOrder:
+                      type: integer
+
+    # ---------- Cart ----------
+    CartWithTotals:
+      type: object
+      required: [id, userId, branchId, items, totalItems, subtotal]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        branchId:
+          type: string
+        branch:
+          $ref: "#/components/schemas/Branch"
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, productId, quantity, totalPrice, product]
+            properties:
+              id:
+                type: string
+              cartId:
+                type: string
+              productId:
+                type: string
+              quantity:
+                type: integer
+              selectedOptions:
+                type: string
+                nullable: true
+                description: JSON array of selected options
+              totalPrice:
+                type: number
+              product:
+                $ref: "#/components/schemas/Product"
+              createdAt:
+                type: string
+                format: date-time
+              updatedAt:
+                type: string
+                format: date-time
+        totalItems:
+          type: integer
+          description: Sum of all item quantities
+        subtotal:
+          type: number
+          description: Sum of all item totalPrice values
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # ---------- Orders ----------
+    CreateOrderInput:
+      type: object
+      required: [branchId, type, paymentMethod]
+      properties:
+        branchId:
+          type: string
+          description: Branch to order from
+        type:
+          type: string
+          enum: [delivery, pickup]
+        addressId:
+          type: string
+          description: Required when type=delivery
+        paymentMethod:
+          type: string
+          enum: [card, cash, bonus]
+        note:
+          type: string
+          nullable: true
+        promotionCode:
+          type: string
+          nullable: true
+        useBonus:
+          type: number
+          nullable: true
+          description: Amount of bonus points to apply
+
+    Order:
+      type: object
+      required: [id, orderNumber, userId, branchId, type, status, subtotal, discount, total]
+      properties:
+        id:
+          type: string
+        orderNumber:
+          type: string
+          example: "#1042"
+        userId:
+          type: string
+        branchId:
+          type: string
+        type:
+          type: string
+          enum: [delivery, pickup]
+        status:
+          type: string
+          enum: [new, confirmed, cooking, ready, delivering, completed, cancelled]
+        addressSnapshot:
+          type: string
+          nullable: true
+          description: JSON of delivery address at order time
+        deliveryFee:
+          type: number
+        subtotal:
+          type: number
+        discount:
+          type: number
+          default: 0
+        total:
+          type: number
+        note:
+          type: string
+          nullable: true
+        promotionId:
+          type: string
+          nullable: true
+        promotionCode:
+          type: string
+          nullable: true
+        bonusUsed:
+          type: number
+          default: 0
+        estimatedMinutes:
+          type: integer
+          nullable: true
+        confirmedAt:
+          type: string
+          format: date-time
+          nullable: true
+        cookingAt:
+          type: string
+          format: date-time
+          nullable: true
+        readyAt:
+          type: string
+          format: date-time
+          nullable: true
+        deliveringAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        branch:
+          type: object
+          properties:
+            name:
+              type: string
+            address:
+              type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        payments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Payment"
+
+    OrderDetail:
+      allOf:
+        - $ref: "#/components/schemas/Order"
+        - type: object
+          properties:
+            branch:
+              type: object
+              properties:
+                name:
+                  type: string
+                address:
+                  type: string
+                phone:
+                  type: string
+                  nullable: true
+            items:
+              type: array
+              items:
+                allOf:
+                  - $ref: "#/components/schemas/OrderItem"
+                  - type: object
+                    properties:
+                      product:
+                        type: object
+                        properties:
+                          imageUrl:
+                            type: string
+                            nullable: true
+            promotion:
+              type: object
+              nullable: true
+              properties:
+                name:
+                  type: string
+                type:
+                  type: string
+                value:
+                  type: number
+
+    OrderItem:
+      type: object
+      required: [id, orderId, productId, productName, productPrice, quantity, totalPrice]
+      properties:
+        id:
+          type: string
+        orderId:
+          type: string
+        productId:
+          type: string
+        productName:
+          type: string
+          description: Snapshot of product name at order time
+        productPrice:
+          type: number
+          description: Snapshot of product price at order time
+        quantity:
+          type: integer
+        selectedOptions:
+          type: string
+          nullable: true
+          description: JSON snapshot of selected options
+        totalPrice:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+
+    PaginatedOrders:
+      type: object
+      required: [orders, total, page, limit, pages]
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        pages:
+          type: integer
+
+    # ---------- Payments ----------
+    Payment:
+      type: object
+      required: [id, orderId, method, status, amount]
+      properties:
+        id:
+          type: string
+        orderId:
+          type: string
+        method:
+          type: string
+          enum: [card, cash, bonus]
+        status:
+          type: string
+          enum: [pending, processing, succeeded, failed, refunded]
+        amount:
+          type: number
+        providerTxId:
+          type: string
+          nullable: true
+        providerPayload:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # ---------- Promotions ----------
+    Promotion:
+      type: object
+      required: [id, name, type, value, minOrder, usedCount, startDate, endDate, status]
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+          nullable: true
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum: [percentage, fixed, free_delivery, bonus]
+        value:
+          type: number
+          description: Percentage value, fixed amount, etc.
+        minOrder:
+          type: number
+          default: 0
+        maxUses:
+          type: integer
+          nullable: true
+        usedCount:
+          type: integer
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [active, inactive, expired]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ValidatedPromotion:
+      type: object
+      required: [id, name, type, value, discount, freeDelivery]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [percentage, fixed, free_delivery, bonus]
+        value:
+          type: number
+        discount:
+          type: number
+          description: Calculated discount amount
+        freeDelivery:
+          type: boolean
+        description:
+          type: string
+          nullable: true
+
+    PromotionInput:
+      type: object
+      required: [name, type, value, startDate, endDate]
+      properties:
+        code:
+          type: string
+          nullable: true
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        type:
+          type: string
+          enum: [percentage, fixed, free_delivery, bonus]
+        value:
+          type: number
+        minOrder:
+          type: number
+          default: 0
+        maxUses:
+          type: integer
+          nullable: true
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+
+    # ---------- Loyalty ----------
+    LoyaltyAccount:
+      type: object
+      required: [id, userId, balance, lifetime, tier]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        balance:
+          type: number
+          description: Current bonus point balance
+        lifetime:
+          type: number
+          description: Total amount ever spent
+        tier:
+          type: string
+          enum: [bronze, silver, gold]
+          description: bronze (< 3000 UAH), silver (>= 3000), gold (>= 10000)
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    LoyaltyTransaction:
+      type: object
+      required: [id, accountId, type, amount, balanceAfter]
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        type:
+          type: string
+          enum: [earned, spent, adjusted, expired]
+        amount:
+          type: number
+          description: Can be negative for spent/expired
+        balanceAfter:
+          type: number
+        description:
+          type: string
+          nullable: true
+        relatedOrderId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    # ---------- Analytics ----------
+    Analytics:
+      type: object
+      required: [orders, revenue, statusDistribution, topProducts, recentOrders]
+      properties:
+        orders:
+          type: object
+          required: [today, week, month]
+          properties:
+            today:
+              type: integer
+            week:
+              type: integer
+            month:
+              type: integer
+        revenue:
+          type: object
+          required: [today, week, month]
+          properties:
+            today:
+              type: number
+            week:
+              type: number
+            month:
+              type: number
+        statusDistribution:
+          type: array
+          items:
+            type: object
+            required: [status, count]
+            properties:
+              status:
+                type: string
+              count:
+                type: integer
+        topProducts:
+          type: array
+          items:
+            type: object
+            required: [name, quantity, revenue]
+            properties:
+              name:
+                type: string
+              quantity:
+                type: integer
+              revenue:
+                type: number
+        recentOrders:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              orderNumber:
+                type: string
+              status:
+                type: string
+              total:
+                type: number
+              createdAt:
+                type: string
+                format: date-time
+              user:
+                type: object
+                properties:
+                  firstName:
+                    type: string
+                  lastName:
+                    type: string
+                  phone:
+                    type: string
+              branch:
+                type: object
+                properties:
+                  name:
+                    type: string
+              items:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    productName:
+                      type: string
+                    quantity:
+                      type: integer

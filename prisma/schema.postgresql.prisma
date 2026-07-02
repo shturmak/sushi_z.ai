@@ -1,6 +1,9 @@
 // ============================================================
 // SushiChain — Omnichannel Food Ordering System
-// Prisma Schema (SQLite)
+// Prisma Schema (PostgreSQL)
+// ============================================================
+// REFERENCE ONLY — Use this schema for staging/production deployment.
+// To activate: replace provider in schema.prisma and update DATABASE_URL.
 // ============================================================
 
 generator client {
@@ -8,30 +11,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite" // For PostgreSQL staging: provider = "postgresql", url = env("DATABASE_URL")
+  provider = "postgresql"
   url      = env("DATABASE_URL")
-}
-
-// ──────────────────────────────────────────────
-//  BRANDS (white-label tenants)
-// ──────────────────────────────────────────────
-
-model Brand {
-  id             String   @id @default(cuid())
-  name           String
-  slug           String   @unique
-  slogan         String?
-  description    String?
-  primaryColor   String   @default("#e11d48")
-  secondaryColor String   @default("#f5f5f4")
-  logoUrl        String?
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  branches Branch[]
-
-  @@map("brands")
 }
 
 // ──────────────────────────────────────────────
@@ -102,7 +83,6 @@ model UserAddress {
 
 model Branch {
   id          String   @id @default(cuid())
-  brandId     String?
   name        String
   slug        String   @unique
   address     String
@@ -111,14 +91,13 @@ model Branch {
   latitude    Float?
   longitude   Float?
   isOpen      Boolean  @default(true)
-  workSchedule String? // JSON: {"mon":"09:00-22:00",...} — NOTE: For PostgreSQL, change to `Json` type (see schema.postgresql.prisma)
+  workSchedule Json?    // Changed from String to Json for PostgreSQL native JSON support
   description String?
   imageUrl    String?
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  brand        Brand?       @relation(fields: [brandId], references: [id], onDelete: SetNull)
   categories   Category[]
   orders       Order[]
   deliveryZones DeliveryZone[]
@@ -136,7 +115,7 @@ model DeliveryZone {
   minOrder    Float    @default(0)    // minimum order amount
   deliveryFee Float    @default(0)
   estimatedMinutes Int @default(30)
-  polygonData String?                   // JSON polygon coordinates — NOTE: For PostgreSQL, change to `Json` type
+  polygonData Json?                     // Changed from String to Json for PostgreSQL native JSON support
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -244,7 +223,7 @@ model CartItem {
   cartId      String
   productId   String
   quantity    Int      @default(1)
-  selectedOptions String? // JSON: [{optionId, groupId, name, priceDelta}, ...] — NOTE: For PostgreSQL, change to `Json` type
+  selectedOptions Json? // Changed from String to Json for PostgreSQL native JSON support
   totalPrice  Float
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -283,7 +262,7 @@ model Order {
   status        OrderStatus @default(new)
 
   // Delivery details
-  addressSnapshot   String?  // JSON of delivery address at order time — NOTE: For PostgreSQL, change to `Json` type
+  addressSnapshot   Json?    // Changed from String to Json for PostgreSQL native JSON support
   deliveryFee       Float    @default(0)
 
   // Totals
@@ -331,7 +310,7 @@ model OrderItem {
   productName      String   // snapshot
   productPrice     Float    // snapshot
   quantity         Int
-  selectedOptions  String?  // JSON snapshot — NOTE: For PostgreSQL, change to `Json` type
+  selectedOptions  Json?    // Changed from String to Json for PostgreSQL native JSON support
   totalPrice       Float
   createdAt        DateTime @default(now())
 
@@ -366,7 +345,7 @@ model Payment {
   status          PaymentStatus @default(pending)
   amount          Float
   providerTxId    String?       // external payment provider transaction ID
-  providerPayload String?       // full webhook payload JSON — NOTE: For PostgreSQL, change to `Json` type
+  providerPayload Json?         // Changed from String to Json for PostgreSQL native JSON support
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
