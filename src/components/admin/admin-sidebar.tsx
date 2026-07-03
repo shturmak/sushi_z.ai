@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  BarChart3, Store, MapPin, UtensilsCrossed, ShoppingCart,
+  BarChart3, Building2, Store, MapPin, UtensilsCrossed, ShoppingCart,
   Tag, Star, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -39,6 +39,7 @@ export function AdminSidebar() {
 
   const navItems = [
     { href: '/admin', label: t('admin.sidebar.analytics'), icon: BarChart3 },
+    { href: '/admin/brands', label: t('admin.sidebar.brands'), icon: Building2 },
     { href: '/admin/branches', label: t('admin.sidebar.branches'), icon: Store },
     { href: '/admin/delivery-zones', label: t('admin.sidebar.deliveryZones'), icon: MapPin },
     {
