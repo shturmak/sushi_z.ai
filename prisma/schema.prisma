@@ -200,6 +200,9 @@ model Product {
   price       Float
   weight      String?  // e.g. "350г"
   calories    Int?
+  tags        String?  // JSON array: ["роли","сети","вегетарианское"] — NOTE: For PostgreSQL, change to `String[]` or `Json`
+  allergens   String?  // JSON array: ["глютен","молоко","орехи"] — NOTE: For PostgreSQL, change to `String[]` or `Json`
+  isVegetarian Boolean  @default(false)
   isAvailable Boolean  @default(true)
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())

@@ -572,3 +572,28 @@ Stage Summary:
 - Favorites: full CRUD via API, heart toggle on menu cards, favorites tab, profile section
 - Address Book: saved addresses in checkout, address management in profile with dialog
 - All new i18n keys added to 3 locale files
+
+---
+Task ID: 10
+Agent: Main
+Task: Add search and filter UI to the storefront menu view
+
+Work Log:
+- Added i18n translation keys for search/filter to all 3 locale files (uk, en, ru) under `menu.filters.*`
+- Updated `Product` interface with `isVegetarian`, `tags`, `allergens` fields
+- Added imports: `useMemo` from React, `Search`, `SlidersHorizontal`, `X` from lucide-react, `Input`, `Label`, `Switch` from UI components
+- Removed unused imports: `useCallback`, `Loader2`
+- Moved filter state declarations and `useMemo` hooks before early returns to fix React hooks rules
+- Added search bar with filter button (badge count indicator) at top of MenuContent
+- Added active filter badges (vegetarian, tags, excluded allergens) with dismissible X
+- Added Filter Sheet (slide-in panel) with: vegetarian toggle, price range inputs, tag selection, allergen exclusion
+- Added conditional rendering: when filters are active → flat grid of all matching products; when cleared → normal category view
+- Removed duplicate `handleCategoryClick` function
+- All changes pass ESLint cleanly
+
+Stage Summary:
+- Search bar always visible at top of menu with search icon
+- Filter button opens Sheet with vegetarian, price range, tags, allergens filters
+- Active filters shown as dismissible badges below search bar
+- Filtered results displayed in flat grid with count header and empty state
+- Clearing all filters returns to normal category-based view

@@ -69,6 +69,21 @@ const en: Messages = {
     emptyCategory: 'Category is empty',
     add: 'Add',
     notAvailable: 'Not available',
+    searchPlaceholder: 'Search products...',
+    filters: {
+      title: 'Filters',
+      description: 'Filter products by criteria',
+      vegetarian: 'Vegetarian',
+      priceRange: 'Price range',
+      minPrice: 'Min',
+      maxPrice: 'Max',
+      tags: 'Tags',
+      excludeAllergens: 'Exclude allergens',
+      clearAll: 'Clear all',
+      showResults: 'Show results',
+      results: 'Results',
+      noResults: 'Nothing found. Try adjusting your filters.',
+    },
   },
 
   cart: {

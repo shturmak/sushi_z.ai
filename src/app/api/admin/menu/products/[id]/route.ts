@@ -21,9 +21,19 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     await requireAdmin();
     const { id } = await params;
     const body = await request.json();
-    const { name, description, imageUrl, price, weight, calories, isAvailable, sortOrder, optionGroups } = body;
+    const { name, description, imageUrl, price, weight, calories, isVegetarian, isAvailable, tags, allergens, sortOrder, optionGroups } = body;
 
-    await db.product.update({ where: { id }, data: { name, description, imageUrl: imageUrl || null, price, weight, calories, isAvailable, sortOrder } });
+    // Convert comma-separated tags/allergens to JSON arrays
+    const tagsJson = tags !== undefined ? (tags ? JSON.stringify(tags.split(',').map((t: string) => t.trim()).filter(Boolean)) : null) : undefined;
+    const allergensJson = allergens !== undefined ? (allergens ? JSON.stringify(allergens.split(',').map((a: string) => a.trim()).filter(Boolean)) : null) : undefined;
+
+    const updateData: Record<string, unknown> = { name, description, imageUrl: imageUrl || null, price, weight, calories, sortOrder };
+    if (isVegetarian !== undefined) updateData.isVegetarian = isVegetarian;
+    if (isAvailable !== undefined) updateData.isAvailable = isAvailable;
+    if (tagsJson !== undefined) updateData.tags = tagsJson;
+    if (allergensJson !== undefined) updateData.allergens = allergensJson;
+
+    await db.product.update({ where: { id }, data: updateData });
 
     // Rebuild option groups if provided
     if (optionGroups) {

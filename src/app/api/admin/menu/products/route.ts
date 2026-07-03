@@ -37,16 +37,25 @@ export async function POST(request: NextRequest) {
   try {
     await requireAdmin();
     const body = await request.json();
-    const { categoryId, branchId, name, slug, description, imageUrl, price, weight, calories, isAvailable, sortOrder, optionGroups } = body;
+    const { categoryId, branchId, name, slug, description, imageUrl, price, weight, calories, isVegetarian, isAvailable, tags, allergens, sortOrder, optionGroups } = body;
 
     if (!categoryId || !name || !slug || price == null)
       return apiError('VALIDATION_ERROR', 'categoryId, name, slug, price required');
+
+    // Convert comma-separated tags/allergens to JSON arrays
+    const tagsJson = tags ? JSON.stringify(tags.split(',').map((t: string) => t.trim()).filter(Boolean)) : null;
+    const allergensJson = allergens ? JSON.stringify(allergens.split(',').map((a: string) => a.trim()).filter(Boolean)) : null;
 
     const product = await db.product.create({
       data: {
         categoryId, branchId: branchId || null, name, slug, description,
         imageUrl: imageUrl || null,
-        price, weight, calories, isAvailable: isAvailable ?? true, sortOrder: sortOrder ?? 0,
+        price, weight, calories,
+        isVegetarian: isVegetarian ?? false,
+        isAvailable: isAvailable ?? true,
+        tags: tagsJson,
+        allergens: allergensJson,
+        sortOrder: sortOrder ?? 0,
       },
     });
 

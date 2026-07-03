@@ -67,6 +67,21 @@ const uk = {
     emptyCategory: 'Категорія порожня',
     add: 'Додати',
     notAvailable: 'Немає в наявності',
+    searchPlaceholder: 'Пошук продуктів...',
+    filters: {
+      title: 'Фільтри',
+      description: 'Відфільтруйте продукти за параметрами',
+      vegetarian: 'Вегетаріанське',
+      priceRange: 'Ціновий діапазон',
+      minPrice: 'Від',
+      maxPrice: 'До',
+      tags: 'Теги',
+      excludeAllergens: 'Виключити алергени',
+      clearAll: 'Скинути все',
+      showResults: 'Показати результати',
+      results: 'Результати',
+      noResults: 'Нічого не знайдено. Спробуйте змінити фільтри.',
+    },
   },
 
   cart: {

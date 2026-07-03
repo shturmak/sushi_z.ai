@@ -39,7 +39,10 @@ const emptyForm: ProductFormData = {
   price: 0,
   weight: '',
   calories: 0,
+  isVegetarian: false,
   isAvailable: true,
+  tags: '',
+  allergens: '',
   sortOrder: 0,
   optionGroups: [],
 };
@@ -98,7 +101,10 @@ export default function ProductsPage() {
           price: prod.price,
           weight: prod.weight || '',
           calories: prod.calories || 0,
+          isVegetarian: prod.isVegetarian ?? false,
           isAvailable: prod.isAvailable,
+          tags: typeof prod.tags === 'string' ? JSON.parse(prod.tags).join(', ') : '',
+          allergens: typeof prod.allergens === 'string' ? JSON.parse(prod.allergens).join(', ') : '',
           sortOrder: prod.sortOrder,
           optionGroups: [],
         });
@@ -459,7 +465,18 @@ export default function ProductsPage() {
                 />
               </div>
 
-              <div className="flex items-center gap-3 pt-6">
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="prod-vegetarian"
+                  checked={form.isVegetarian}
+                  onCheckedChange={checked =>
+                    setForm(f => ({ ...f, isVegetarian: checked }))
+                  }
+                />
+                <Label htmlFor="prod-vegetarian">🥬 Вегетаріанське</Label>
+              </div>
+
+              <div className="flex items-center gap-3 pt-4">
                 <Switch
                   id="prod-available"
                   checked={form.isAvailable}
@@ -469,6 +486,28 @@ export default function ProductsPage() {
                 />
                 <Label htmlFor="prod-available">{t('admin.products.available')}</Label>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="prod-tags">Теги</Label>
+              <Input
+                id="prod-tags"
+                placeholder="роли, сети, гостре"
+                value={form.tags}
+                onChange={e => setForm(f => ({ ...f, tags: e.target.value }))}
+              />
+              <p className="text-xs text-muted-foreground">Через кому, наприклад: роли, сети, гостре</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="prod-allergens">Алергени</Label>
+              <Input
+                id="prod-allergens"
+                placeholder="риба, молоко, глютен"
+                value={form.allergens}
+                onChange={e => setForm(f => ({ ...f, allergens: e.target.value }))}
+              />
+              <p className="text-xs text-muted-foreground">Через кому, наприклад: риба, молоко, глютен</p>
             </div>
 
             <div className="space-y-2">

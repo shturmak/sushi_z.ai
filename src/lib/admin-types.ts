@@ -226,7 +226,10 @@ export interface ProductFormData {
   price: number;
   weight: string;
   calories: number;
+  isVegetarian: boolean;
   isAvailable: boolean;
+  tags: string;
+  allergens: string;
   sortOrder: number;
   optionGroups: {
     name: string;

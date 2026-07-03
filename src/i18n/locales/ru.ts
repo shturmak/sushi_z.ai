@@ -69,6 +69,21 @@ const ru: Messages = {
     emptyCategory: 'Категория пуста',
     add: 'Добавить',
     notAvailable: 'Нет в наличии',
+    searchPlaceholder: 'Поиск продуктов...',
+    filters: {
+      title: 'Фильтры',
+      description: 'Отфильтруйте продукты по параметрам',
+      vegetarian: 'Вегетарианское',
+      priceRange: 'Ценовой диапазон',
+      minPrice: 'От',
+      maxPrice: 'До',
+      tags: 'Теги',
+      excludeAllergens: 'Исключить аллергены',
+      clearAll: 'Сбросить все',
+      showResults: 'Показать результаты',
+      results: 'Результаты',
+      noResults: 'Ничего не найдено. Попробуйте изменить фильтры.',
+    },
   },
 
   cart: {

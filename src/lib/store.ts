@@ -115,6 +115,16 @@ export const API = {
   },
   menu: {
     byBranch: (branchId: string) => apiFetch(`/api/menu?branchId=${branchId}`),
+    search: (params: { branchId: string; search?: string; tags?: string; excludeAllergens?: string; vegetarian?: string; minPrice?: number; maxPrice?: number }) => {
+      const sp = new URLSearchParams({ branchId: params.branchId });
+      if (params.search) sp.set('search', params.search);
+      if (params.tags) sp.set('tags', params.tags);
+      if (params.excludeAllergens) sp.set('excludeAllergens', params.excludeAllergens);
+      if (params.vegetarian) sp.set('vegetarian', params.vegetarian);
+      if (params.minPrice) sp.set('minPrice', String(params.minPrice));
+      if (params.maxPrice) sp.set('maxPrice', String(params.maxPrice));
+      return apiFetch(`/api/products/search?${sp.toString()}`);
+    },
     product: (id: string) => apiFetch(`/api/products/${id}`),
   },
   cart: {

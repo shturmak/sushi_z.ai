@@ -1,11 +1,14 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useBrand, useAuth, API } from '@/lib/store'
 import { useT } from '@/i18n'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
@@ -29,10 +32,12 @@ import {
   Minus,
   Trash2,
   ShoppingCart,
-  Loader2,
   Store,
   MessageSquare,
   Heart,
+  Search,
+  SlidersHorizontal,
+  X,
 } from 'lucide-react'
 import { StarRating, StarRatingText } from '@/components/ui/star-rating'
 import {
@@ -76,6 +81,9 @@ interface Product {
   weight: string | null
   imageUrl: string | null
   isAvailable: boolean
+  isVegetarian: boolean
+  tags: string | null
+  allergens: string | null
   optionGroups: ProductOptionGroup[]
 }
 
@@ -393,6 +401,80 @@ function MenuContent({
   const scrollRef = useRef<HTMLDivElement>(null)
   const FAVORITES_CAT_ID = '__favorites__'
 
+  // ── Search & Filter state ──────────────────────────────
+  const [searchQuery, setSearchQuery] = useState('')
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 2000])
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [excludedAllergens, setExcludedAllergens] = useState<string[]>([])
+  const [vegetarianOnly, setVegetarianOnly] = useState(false)
+  const [filterOpen, setFilterOpen] = useState(false)
+
+  // ── Filter helpers ─────────────────────────────────────
+  function parseJsonField(field: string | null): string[] {
+    if (!field) return []
+    try { return JSON.parse(field) } catch { return [] }
+  }
+
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>()
+    categories.forEach(c => c.products.forEach(p => {
+      parseJsonField(p.tags).forEach(t => tagSet.add(t))
+    }))
+    return [...tagSet].sort()
+  }, [categories])
+
+  const allAllergens = useMemo(() => {
+    const set = new Set<string>()
+    categories.forEach(c => c.products.forEach(p => {
+      parseJsonField(p.allergens).forEach(a => set.add(a))
+    }))
+    return [...set].sort()
+  }, [categories])
+
+  const filteredProducts = useMemo(() => {
+    let products = categories.flatMap(c => c.products)
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      products = products.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        (p.description || '').toLowerCase().includes(q)
+      )
+    }
+
+    if (vegetarianOnly) {
+      products = products.filter(p => p.isVegetarian)
+    }
+
+    if (selectedTags.length > 0) {
+      const tagSet = new Set(selectedTags.map(t => t.toLowerCase()))
+      products = products.filter(p =>
+        parseJsonField(p.tags).some(t => tagSet.has(t.toLowerCase()))
+      )
+    }
+
+    if (excludedAllergens.length > 0) {
+      const exSet = new Set(excludedAllergens.map(a => a.toLowerCase()))
+      products = products.filter(p =>
+        !parseJsonField(p.allergens).some(a => exSet.has(a.toLowerCase()))
+      )
+    }
+
+    products = products.filter(p => p.price >= priceRange[0] && p.price <= priceRange[1])
+
+    return products
+  }, [categories, searchQuery, selectedTags, excludedAllergens, vegetarianOnly, priceRange])
+
+  function clearFilters() {
+    setSearchQuery('')
+    setSelectedTags([])
+    setExcludedAllergens([])
+    setVegetarianOnly(false)
+    setPriceRange([0, 2000])
+  }
+
+  const hasActiveFilters = searchQuery.trim() !== '' || selectedTags.length > 0 || excludedAllergens.length > 0 || vegetarianOnly
+
   useEffect(() => {
     let cancelled = false
     API.menu.byBranch(branchId).then(({ data }) => {
@@ -514,15 +596,150 @@ function MenuContent({
     )
   }
 
-  function handleCategoryClick(catId: string) {
-    setActiveCategory(catId)
-    if (catId === FAVORITES_CAT_ID) return
-    const el = document.getElementById(`cat-${catId}`)
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
   return (
     <>
+      {/* Search & Filter Bar */}
+      <div className="mb-4 flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={t('menu.searchPlaceholder')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Button
+          variant="outline"
+          size="icon"
+          className="shrink-0 relative"
+          onClick={() => setFilterOpen(true)}
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          {hasActiveFilters && !searchQuery.trim() && (
+            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full text-[10px] font-bold flex items-center justify-center text-white" style={{ backgroundColor: primaryColor }}>
+              {selectedTags.length + excludedAllergens.length + (vegetarianOnly ? 1 : 0)}
+            </span>
+          )}
+        </Button>
+      </div>
+
+      {/* Active filter badges */}
+      {hasActiveFilters && (
+        <div className="mb-4 flex flex-wrap gap-1.5">
+          {vegetarianOnly && (
+            <Badge variant="secondary" className="gap-1 cursor-pointer" onClick={() => setVegetarianOnly(false)}>
+              🥬 {t('menu.filters.vegetarian')} <X className="h-3 w-3" />
+            </Badge>
+          )}
+          {selectedTags.map(tag => (
+            <Badge key={tag} variant="secondary" className="gap-1 cursor-pointer" onClick={() => setSelectedTags(prev => prev.filter(t => t !== tag))}>
+              {tag} <X className="h-3 w-3" />
+            </Badge>
+          ))}
+          {excludedAllergens.map(a => (
+            <Badge key={a} variant="outline" className="gap-1 cursor-pointer text-destructive" onClick={() => setExcludedAllergens(prev => prev.filter(x => x !== a))}>
+              – {a} <X className="h-3 w-3" />
+            </Badge>
+          ))}
+          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={clearFilters}>
+            {t('menu.filters.clearAll')}
+          </Button>
+        </div>
+      )}
+
+      {/* Filter Sheet */}
+      <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>{t('menu.filters.title')}</SheetTitle>
+            <SheetDescription>{t('menu.filters.description')}</SheetDescription>
+          </SheetHeader>
+          <div className="mt-6 space-y-6">
+            {/* Vegetarian toggle */}
+            <div className="flex items-center justify-between">
+              <Label className="cursor-pointer" onClick={() => setVegetarianOnly(!vegetarianOnly)}>
+                🥬 {t('menu.filters.vegetarian')}
+              </Label>
+              <Switch checked={vegetarianOnly} onCheckedChange={setVegetarianOnly} />
+            </div>
+
+            {/* Price range */}
+            <div className="space-y-2">
+              <Label>{t('menu.filters.priceRange')}</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  placeholder={t('menu.filters.minPrice')}
+                  value={priceRange[0] || ''}
+                  onChange={(e) => setPriceRange([Number(e.target.value) || 0, priceRange[1]])}
+                  className="w-24"
+                />
+                <span className="text-muted-foreground">—</span>
+                <Input
+                  type="number"
+                  placeholder={t('menu.filters.maxPrice')}
+                  value={priceRange[1] >= 9999 ? '' : priceRange[1]}
+                  onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value) || 9999])}
+                  className="w-24"
+                />
+                <span className="text-sm text-muted-foreground">₴</span>
+              </div>
+            </div>
+
+            {/* Tags */}
+            {allTags.length > 0 && (
+              <div className="space-y-2">
+                <Label>{t('menu.filters.tags')}</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {allTags.map(tag => (
+                    <Badge
+                      key={tag}
+                      variant={selectedTags.includes(tag) ? 'default' : 'outline'}
+                      className="cursor-pointer"
+                      onClick={() => setSelectedTags(prev =>
+                        prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+                      )}
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Allergens to exclude */}
+            {allAllergens.length > 0 && (
+              <div className="space-y-2">
+                <Label>{t('menu.filters.excludeAllergens')}</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {allAllergens.map(a => (
+                    <Badge
+                      key={a}
+                      variant={excludedAllergens.includes(a) ? 'destructive' : 'outline'}
+                      className="cursor-pointer"
+                      onClick={() => setExcludedAllergens(prev =>
+                        prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]
+                      )}
+                    >
+                      – {a}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <SheetFooter>
+            <Button variant="outline" onClick={() => { clearFilters(); setFilterOpen(false) }}>
+              {t('menu.filters.clearAll')}
+            </Button>
+            <Button onClick={() => setFilterOpen(false)} style={{ backgroundColor: primaryColor }} className="text-white">
+              {t('menu.filters.showResults')} ({filteredProducts.length})
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
       {/* Category pills */}
       <div ref={scrollRef} className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-none">
         {isAuthenticated && (
@@ -561,31 +778,57 @@ function MenuContent({
         ))}
       </div>
 
-      {/* Favorites view */}
-      {activeCategory === FAVORITES_CAT_ID && (
-        <section className="mb-8">
-          <h2 className="mb-4 text-xl font-bold">{t('favorites.title')}</h2>
-          {favoriteProducts.length === 0 && (
-            <p className="text-sm text-muted-foreground">{t('favorites.empty')}</p>
-          )}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {favoriteProducts.map((product) => renderProductCard(product))}
+      {/* Filtered results view (flat grid) vs normal category view */}
+      {hasActiveFilters ? (
+        <section>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold">
+              {t('menu.filters.results')} ({filteredProducts.length})
+            </h2>
           </div>
+          {filteredProducts.length === 0 ? (
+            <div className="py-12 text-center text-muted-foreground">
+              <Search className="mx-auto mb-3 h-10 w-10 opacity-40" />
+              <p>{t('menu.filters.noResults')}</p>
+              <Button variant="link" className="mt-2" onClick={clearFilters}>
+                {t('menu.filters.clearAll')}
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredProducts.map(product => renderProductCard(product))}
+            </div>
+          )}
         </section>
-      )}
+      ) : (
+        <>
+          {/* Favorites view */}
+          {activeCategory === FAVORITES_CAT_ID && (
+            <section className="mb-8">
+              <h2 className="mb-4 text-xl font-bold">{t('favorites.title')}</h2>
+              {favoriteProducts.length === 0 && (
+                <p className="text-sm text-muted-foreground">{t('favorites.empty')}</p>
+              )}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {favoriteProducts.map((product) => renderProductCard(product))}
+              </div>
+            </section>
+          )}
 
-      {/* Product grid */}
-      {activeCategory !== FAVORITES_CAT_ID && categories.map((cat) => (
-        <section key={cat.id} id={`cat-${cat.id}`} className="mb-8 scroll-mt-20">
-          <h2 className="mb-4 text-xl font-bold">{cat.name}</h2>
-          {cat.products.length === 0 && (
-            <p className="text-sm text-muted-foreground">{t('menu.emptyCategory')}</p>
-          )}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {cat.products.map((product) => renderProductCard(product))}
-          </div>
-        </section>
-      ))}
+          {/* Product grid by category */}
+          {activeCategory !== FAVORITES_CAT_ID && categories.map((cat) => (
+            <section key={cat.id} id={`cat-${cat.id}`} className="mb-8 scroll-mt-20">
+              <h2 className="mb-4 text-xl font-bold">{cat.name}</h2>
+              {cat.products.length === 0 && (
+                <p className="text-sm text-muted-foreground">{t('menu.emptyCategory')}</p>
+              )}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {cat.products.map((product) => renderProductCard(product))}
+              </div>
+            </section>
+          ))}
+        </>
+      )}
     </>
   )
 }
