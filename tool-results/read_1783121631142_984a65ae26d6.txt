@@ -1,0 +1,902 @@
+     1→'use client'
+     2→
+     3→import { useState, useEffect, useCallback, useRef } from 'react'
+     4→import { useBrand, useAuth, API } from '@/lib/store'
+     5→import { useT } from '@/i18n'
+     6→import { Card, CardContent } from '@/components/ui/card'
+     7→import { Button } from '@/components/ui/button'
+     8→import { Badge } from '@/components/ui/badge'
+     9→import { ScrollArea } from '@/components/ui/scroll-area'
+    10→import { Separator } from '@/components/ui/separator'
+    11→import { Textarea } from '@/components/ui/textarea'
+    12→import {
+    13→  Select,
+    14→  SelectContent,
+    15→  SelectItem,
+    16→  SelectTrigger,
+    17→  SelectValue,
+    18→} from '@/components/ui/select'
+    19→import {
+    20→  Sheet,
+    21→  SheetContent,
+    22→  SheetHeader,
+    23→  SheetTitle,
+    24→  SheetDescription,
+    25→  SheetFooter,
+    26→} from '@/components/ui/sheet'
+    27→import {
+    28→  Plus,
+    29→  Minus,
+    30→  Trash2,
+    31→  ShoppingCart,
+    32→  Loader2,
+    33→  Store,
+    34→  MessageSquare,
+    35→  Heart,
+    36→} from 'lucide-react'
+    37→import { StarRating, StarRatingText } from '@/components/ui/star-rating'
+    38→import {
+    39→  Dialog,
+    40→  DialogContent,
+    41→  DialogHeader,
+    42→  DialogTitle,
+    43→  DialogFooter,
+    44→} from '@/components/ui/dialog'
+    45→
+    46→// ── Types ────────────────────────────────────────────────
+    47→
+    48→interface Branch {
+    49→  id: string
+    50→  name: string
+    51→  slug: string
+    52→  address: string
+    53→  isOpen: boolean
+    54→}
+    55→
+    56→interface ProductOption {
+    57→  id: string
+    58→  groupId: string
+    59→  name: string
+    60→  priceDelta: number
+    61→}
+    62→
+    63→interface ProductOptionGroup {
+    64→  id: string
+    65→  name: string
+    66→  isRequired: boolean
+    67→  maxChoices: number
+    68→  options: ProductOption[]
+    69→}
+    70→
+    71→interface Product {
+    72→  id: string
+    73→  name: string
+    74→  description: string | null
+    75→  price: number
+    76→  weight: string | null
+    77→  imageUrl: string | null
+    78→  isAvailable: boolean
+    79→  optionGroups: ProductOptionGroup[]
+    80→}
+    81→
+    82→interface Category {
+    83→  id: string
+    84→  name: string
+    85→  imageUrl: string | null
+    86→  products: Product[]
+    87→}
+    88→
+    89→interface CartItem {
+    90→  id: string
+    91→  productId: string
+    92→  quantity: number
+    93→  totalPrice: number
+    94→  product: {
+    95→    name: string
+    96→    price: number
+    97→  }
+    98→}
+    99→
+   100→interface Cart {
+   101→  id: string
+   102→  totalItems: number
+   103→  subtotal: number
+   104→  items: CartItem[]
+   105→}
+   106→
+   107→interface MenuViewProps {
+   108→  onCheckout: () => void
+   109→  onCartCountChange: (count: number) => void
+   110→}
+   111→
+   112→// ── Review types ───────────────────────────────────────
+   113→
+   114→interface ProductReview {
+   115→  id: string
+   116→  rating: number
+   117→  comment: string | null
+   118→  isAdminReply: string | null
+   119→  createdAt: string
+   120→  user: { firstName: string; lastName: string }
+   121→}
+   122→
+   123→interface ReviewDialogProps {
+   124→  productId: string
+   125→  open: boolean
+   126→  onClose: () => void
+   127→  primaryColor: string
+   128→}
+   129→
+   130→const FOOD_EMOJIS = ['🍣', '🍕', '🍔', '🍱', '🍜', '🥗', '🍤', '🍣', '🥘', '🍱', '🧁', '🥤'];
+   131→
+   132→function getCategoryEmoji(categoryName: string): string {
+   133→  const lower = categoryName.toLowerCase();
+   134→  if (lower.includes('рол') || lower.includes('roll')) return '🍣';
+   135→  if (lower.includes('сет') || lower.includes('set')) return '🍱';
+   136→  if (lower.includes('суш') || lower.includes('sushi')) return '🍣';
+   137→  if (lower.includes('піц') || lower.includes('pizza')) return '🍕';
+   138→  if (lower.includes('паст') || lower.includes('pasta')) return '🍝';
+   139→  if (lower.includes('бургер') || lower.includes('burger')) return '🍔';
+   140→  if (lower.includes('салат') || lower.includes('salad')) return '🥗';
+   141→  if (lower.includes('напо') || lower.includes('drink')) return '🥤';
+   142→  if (lower.includes('десерт') || lower.includes('dessert')) return '🧁';
+   143→  if (lower.includes('снек') || lower.includes('side')) return '🍟';
+   144→  if (lower.includes('гаряч') || lower.includes('hot') || lower.includes('рамен') || lower.includes('вук')) return '🍜';
+   145→  return FOOD_EMOJIS[Math.abs(categoryName.charCodeAt(0)) % FOOD_EMOJIS.length];
+   146→}
+   147→
+   148→function ProductImage({ product, primaryColor }: { product: Product; primaryColor: string }) {
+   149→  if (product.imageUrl) {
+   150→    return (
+   151→      <img
+   152→        src={product.imageUrl}
+   153→        alt={product.name}
+   154→        className="h-32 w-full object-cover"
+   155→        onError={(e) => {
+   156→          (e.target as HTMLImageElement).style.display = 'none';
+   157→          (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+   158→        }}
+   159→      />
+   160→    );
+   161→  }
+   162→  return null;
+   163→}
+   164→
+   165→function ProductPlaceholder({ product, primaryColor }: { product: Product; primaryColor: string }) {
+   166→  return (
+   167→    <div
+   168→      className="flex h-32 w-full items-center justify-center text-4xl"
+   169→      style={{
+   170→        backgroundColor: product.isAvailable ? primaryColor : '#a1a1aa',
+   171→      }}
+   172→    >
+   173→      <span className="drop-shadow-md">{getCategoryEmoji(product.name)}</span>
+   174→    </div>
+   175→  );
+   176→}
+   177→
+   178→// ── Product Reviews Section ─────────────────────────────
+   179→
+   180→function ProductReviewsSection({ productId, primaryColor }: { productId: string; primaryColor: string }) {
+   181→  const t = useT()
+   182→  const isAuthenticated = useAuth((s) => s.isAuthenticated)
+   183→  const [reviews, setReviews] = useState<ProductReview[]>([])
+   184→  const [avgRating, setAvgRating] = useState(0)
+   185→  const [totalCount, setTotalCount] = useState(0)
+   186→  const [loaded, setLoaded] = useState(false)
+   187→  const [dialogOpen, setDialogOpen] = useState(false)
+   188→
+   189→  useEffect(() => {
+   190→    let cancelled = false
+   191→    API.reviews.getByProduct(productId).then(({ data }) => {
+   192→      if (cancelled || !data) return
+   193→      const resp = data as { data: ProductReview[]; averageRating: number; totalApproved: number }
+   194→      setReviews(resp.data?.slice(0, 3) || [])
+   195→      setAvgRating(resp.averageRating || 0)
+   196→      setTotalCount(resp.totalApproved || 0)
+   197→      setLoaded(true)
+   198→    })
+   199→    return () => { cancelled = true }
+   200→  }, [productId])
+   201→
+   202→  if (!loaded) return null
+   203→
+   204→  return (
+   205→    <>
+   206→      <Separator className="mt-2" />
+   207→      <div className="pt-2 space-y-2">
+   208→        {/* Header */}
+   209→        <div className="flex items-center justify-between">
+   210→          <div className="flex items-center gap-2">
+   211→            <span className="text-sm font-medium">{t('reviews.title')}</span>
+   212→            {totalCount > 0 && (
+   213→              <span className="text-xs text-muted-foreground">
+   214→                {avgRating.toFixed(1)} ★ ({totalCount})
+   215→              </span>
+   216→            )}
+   217→          </div>
+   218→          {isAuthenticated && (
+   219→            <Button
+   220→              variant="ghost"
+   221→              size="sm"
+   222→              className="h-7 gap-1 text-xs"
+   223→              onClick={() => setDialogOpen(true)}
+   224→            >
+   225→              <MessageSquare className="size-3" />
+   226→              {t('reviews.writeReview')}
+   227→            </Button>
+   228→          )}
+   229→        </div>
+   230→
+   231→        {/* Reviews list */}
+   232→        {reviews.length === 0 ? (
+   233→          <p className="text-xs text-muted-foreground">{t('reviews.noReviews')}</p>
+   234→        ) : (
+   235→          <div className="space-y-2">
+   236→            {reviews.map((r) => (
+   237→              <div key={r.id} className="text-xs space-y-0.5">
+   238→                <div className="flex items-center gap-1.5">
+   239→                  <span className="font-medium text-muted-foreground">
+   240→                    {r.user.firstName.charAt(0).toUpperCase()}
+   241→                  </span>
+   242→                  <StarRatingText rating={r.rating} className="text-xs" />
+   243→                </div>
+   244→                {r.comment && (
+   245→                  <p className="text-muted-foreground line-clamp-2">{r.comment}</p>
+   246→                )}
+   247→              </div>
+   248→            ))}
+   249→          </div>
+   250→        )}
+   251→
+   252→        {!isAuthenticated && (
+   253→          <p className="text-xs text-muted-foreground">{t('reviews.loginRequired')}</p>
+   254→        )}
+   255→      </div>
+   256→
+   257→      {/* Review Dialog */}
+   258→      <ReviewDialog
+   259→        productId={productId}
+   260→        open={dialogOpen}
+   261→        onClose={() => setDialogOpen(false)}
+   262→        primaryColor={primaryColor}
+   263→      />
+   264→    </>
+   265→  )
+   266→}
+   267→
+   268→// ── Review Dialog ───────────────────────────────────────
+   269→
+   270→function ReviewDialog({ productId, open, onClose, primaryColor }: ReviewDialogProps) {
+   271→  const t = useT()
+   272→  const isAuthenticated = useAuth((s) => s.isAuthenticated)
+   273→  const [rating, setRating] = useState(0)
+   274→  const [comment, setComment] = useState('')
+   275→  const [orders, setOrders] = useState<Array<{ id: string; orderNumber: string; items: Array<{ productId: string }> }>>([])
+   276→  const [selectedOrderId, setSelectedOrderId] = useState('')
+   277→  const [submitting, setSubmitting] = useState(false)
+   278→  const [success, setSuccess] = useState(false)
+   279→
+   280→  useEffect(() => {
+   281→    if (!open || !isAuthenticated) return
+   282→    // Fetch completed orders that contain this product
+   283→    API.orders.list('completed').then(({ data }) => {
+   284→      if (!data) return
+   285→      const resp = data as { orders: Array<{ id: string; orderNumber: string; items: Array<{ productId: string }> }> }
+   286→      const matching = (resp.orders || []).filter((o) =>
+   287→        o.items.some((item) => item.productId === productId)
+   288→      )
+   289→      setOrders(matching)
+   290→      if (matching.length === 1) setSelectedOrderId(matching[0].id)
+   291→    })
+   292→  }, [open, isAuthenticated, productId])
+   293→
+   294→  async function handleSubmit() {
+   295→    if (!rating || !selectedOrderId) return
+   296→    setSubmitting(true)
+   297→    const { error } = await API.reviews.create(productId, {
+   298→      orderId: selectedOrderId,
+   299→      rating,
+   300→      comment: comment || undefined,
+   301→    })
+   302→    setSubmitting(false)
+   303→    if (error) return
+   304→    setSuccess(true)
+   305→    setTimeout(() => {
+   306→      setSuccess(false)
+   307→      setRating(0)
+   308→      setComment('')
+   309→      setSelectedOrderId('')
+   310→      onClose()
+   311→    }, 2000)
+   312→  }
+   313→
+   314→  if (!isAuthenticated) {
+   315→    return (
+   316→      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+   317→        <DialogContent className="max-w-sm">
+   318→          <p className="text-sm text-muted-foreground text-center py-4">{t('reviews.loginRequired')}</p>
+   319→        </DialogContent>
+   320→      </Dialog>
+   321→    )
+   322→  }
+   323→
+   324→  return (
+   325→    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+   326→      <DialogContent className="max-w-sm">
+   327→        <DialogHeader>
+   328→          <DialogTitle>{t('reviews.writeReview')}</DialogTitle>
+   329→        </DialogHeader>
+   330→        {success ? (
+   331→          <p className="text-sm text-center py-4 text-green-600 font-medium">{t('reviews.reviewSubmitted')}</p>
+   332→        ) : (
+   333→          <div className="space-y-4">
+   334→            {orders.length === 0 ? (
+   335→              <p className="text-sm text-muted-foreground">{t('reviews.orderRequired')}</p>
+   336→            ) : (
+   337→              <>
+   338→                <div>
+   339→                  <p className="text-sm font-medium mb-1.5">{t('reviews.rating')}</p>
+   340→                  <StarRating rating={rating} interactive onChange={setRating} />
+   341→                </div>
+   342→                <div>
+   343→                  <p className="text-sm font-medium mb-1.5">{t('reviews.comment')}</p>
+   344→                  <Textarea
+   345→                    value={comment}
+   346→                    onChange={(e) => setComment(e.target.value)}
+   347→                    placeholder={t('reviews.commentPlaceholder')}
+   348→                    rows={3}
+   349→                  />
+   350→                </div>
+   351→              </>
+   352→            )}
+   353→          </div>
+   354→        )}
+   355→        {!success && orders.length > 0 && (
+   356→          <DialogFooter>
+   357→            <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+   358→            <Button
+   359→              onClick={handleSubmit}
+   360→              disabled={!rating || submitting}
+   361→              style={{ backgroundColor: primaryColor }}
+   362→              className="text-white"
+   363→            >
+   364→              {t('reviews.submitReview')}
+   365→            </Button>
+   366→          </DialogFooter>
+   367→        )}
+   368→      </DialogContent>
+   369→    </Dialog>
+   370→  )
+   371→}
+   372→
+   373→// ── Menu Content (re-mounts on branch change) ────────────
+   374→
+   375→function MenuContent({
+   376→  branchId,
+   377→  primaryColor,
+   378→  onAddToCart,
+   379→  favoriteProductIds,
+   380→  onToggleFavorite,
+   381→}: {
+   382→  branchId: string
+   383→  primaryColor: string
+   384→  onAddToCart: (product: Product) => void
+   385→  favoriteProductIds: Set<string>
+   386→  onToggleFavorite: (productId: string) => void
+   387→}) {
+   388→  const t = useT()
+   389→  const isAuthenticated = useAuth((s) => s.isAuthenticated)
+   390→  const [categories, setCategories] = useState<Category[]>([])
+   391→  const [activeCategory, setActiveCategory] = useState<string>('')
+   392→  const [loading, setLoading] = useState(true)
+   393→  const scrollRef = useRef<HTMLDivElement>(null)
+   394→  const FAVORITES_CAT_ID = '__favorites__'
+   395→
+   396→  useEffect(() => {
+   397→    let cancelled = false
+   398→    API.menu.byBranch(branchId).then(({ data }) => {
+   399→      if (cancelled) return
+   400→      if (data && Array.isArray(data)) {
+   401→        const cats = data as Category[]
+   402→        setCategories(cats)
+   403→        if (cats.length > 0) setActiveCategory(cats[0].id)
+   404→      }
+   405→      setLoading(false)
+   406→    })
+   407→    return () => { cancelled = true }
+   408→  }, [branchId])
+   409→
+   410→  function handleCategoryClick(catId: string) {
+   411→    setActiveCategory(catId)
+   412→    const el = document.getElementById(`cat-${catId}`)
+   413→    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+   414→  }
+   415→
+   416→  if (loading) {
+   417→    return (
+   418→      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   419→        {Array.from({ length: 6 }).map((_, i) => (
+   420→          <Card key={i} className="animate-pulse">
+   421→            <CardContent className="p-4">
+   422→              <div className="mb-3 h-28 rounded-lg bg-muted" />
+   423→              <div className="h-4 w-2/3 rounded bg-muted" />
+   424→              <div className="mt-2 h-3 w-full rounded bg-muted" />
+   425→              <div className="mt-2 h-8 w-24 rounded bg-muted" />
+   426→            </CardContent>
+   427→          </Card>
+   428→        ))}
+   429→      </div>
+   430→    )
+   431→  }
+   432→
+   433→  if (categories.length === 0) {
+   434→    return (
+   435→      <div className="py-20 text-center text-muted-foreground">
+   436→        <p className="text-lg">{t('menu.emptyMenu')}</p>
+   437→        <p className="text-sm mt-1">{t('menu.emptyMenuHint')}</p>
+   438→      </div>
+   439→    )
+   440→  }
+   441→
+   442→  // Collect all products for favorites view
+   443→  const allProducts = categories.flatMap((c) => c.products)
+   444→  const favoriteProducts = allProducts.filter((p) => favoriteProductIds.has(p.id))
+   445→
+   446→  function renderProductCard(product: Product) {
+   447→    const isFav = favoriteProductIds.has(product.id)
+   448→    return (
+   449→      <Card
+   450→        key={product.id}
+   451→        className={`overflow-hidden transition-all ${
+   452→          !product.isAvailable ? 'opacity-60' : 'hover:shadow-md'
+   453→        }`}
+   454→      >
+   455→        <CardContent className="p-0">
+   456→          <div className="relative">
+   457→            <ProductImage product={product} primaryColor={primaryColor} />
+   458→            <div className={product.imageUrl ? 'hidden' : ''}>
+   459→              <ProductPlaceholder product={product} primaryColor={primaryColor} />
+   460→            </div>
+   461→            {isAuthenticated && (
+   462→              <button
+   463→                onClick={() => onToggleFavorite(product.id)}
+   464→                className="absolute top-2 right-2 z-10 rounded-full bg-background/80 backdrop-blur p-1.5 transition-colors hover:bg-background"
+   465→              >
+   466→                <Heart
+   467→                  className={`size-4 ${isFav ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`}
+   468→                />
+   469→              </button>
+   470→            )}
+   471→          </div>
+   472→          <div className="p-4 space-y-2">
+   473→            <div className="flex items-start justify-between gap-2">
+   474→              <h3 className="font-semibold leading-tight line-clamp-2">
+   475→                {product.name}
+   476→              </h3>
+   477→              {product.weight && (
+   478→                <span className="shrink-0 text-xs text-muted-foreground">
+   479→                  {product.weight}
+   480→                </span>
+   481→              )}
+   482→            </div>
+   483→            {product.description && (
+   484→              <p className="text-sm text-muted-foreground line-clamp-2">
+   485→                {product.description}
+   486→              </p>
+   487→            )}
+   488→            <div className="flex items-center justify-between pt-1">
+   489→              <span className="text-lg font-bold">
+   490→                {Math.round(product.price)} ₴
+   491→              </span>
+   492→              {product.isAvailable ? (
+   493→                <Button
+   494→                  size="sm"
+   495→                  onClick={() => onAddToCart(product)}
+   496→                  style={
+   497→                    { '--primary': primaryColor } as React.CSSProperties
+   498→                  }
+   499→                  className="text-white"
+   500→                >
+   501→                  <Plus className="size-4" />
+   502→                  {t('menu.add')}
+   503→                </Button>
+   504→              ) : (
+   505→                <span className="text-sm text-muted-foreground">
+   506→                  {t('menu.notAvailable')}
+   507→                </span>
+   508→              )}
+   509→            </div>
+   510→            <ProductReviewsSection productId={product.id} primaryColor={primaryColor} />
+   511→          </div>
+   512→        </CardContent>
+   513→      </Card>
+   514→    )
+   515→  }
+   516→
+   517→  function handleCategoryClick(catId: string) {
+   518→    setActiveCategory(catId)
+   519→    if (catId === FAVORITES_CAT_ID) return
+   520→    const el = document.getElementById(`cat-${catId}`)
+   521→    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+   522→  }
+   523→
+   524→  return (
+   525→    <>
+   526→      {/* Category pills */}
+   527→      <div ref={scrollRef} className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+   528→        {isAuthenticated && (
+   529→          <button
+   530→            key={FAVORITES_CAT_ID}
+   531→            onClick={() => handleCategoryClick(FAVORITES_CAT_ID)}
+   532→            className="shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors border flex items-center"
+   533→            style={
+   534→              activeCategory === FAVORITES_CAT_ID
+   535→                ? { backgroundColor: primaryColor, color: '#fff', borderColor: primaryColor }
+   536→                : { borderColor: 'var(--border)', color: 'var(--foreground)' }
+   537→            }
+   538→          >
+   539→            <Heart className={`size-4 mr-1.5 shrink-0 ${activeCategory === FAVORITES_CAT_ID ? 'fill-current' : ''}`} />
+   540→            {t('favorites.title')}
+   541→          </button>
+   542→        )}
+   543→        {categories.map((cat) => (
+   544→          <button
+   545→            key={cat.id}
+   546→            onClick={() => handleCategoryClick(cat.id)}
+   547→            className="shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors border flex items-center"
+   548→            style={
+   549→              activeCategory === cat.id
+   550→                ? { backgroundColor: primaryColor, color: '#fff', borderColor: primaryColor }
+   551→                : { borderColor: 'var(--border)', color: 'var(--foreground)' }
+   552→            }
+   553→          >
+   554→            {cat.imageUrl ? (
+   555→              <img src={cat.imageUrl} alt="" className="h-5 w-5 rounded-full object-cover mr-1.5 shrink-0" />
+   556→            ) : (
+   557→              <span className="mr-0.5 shrink-0">{getCategoryEmoji(cat.name)}</span>
+   558→            )}
+   559→            {cat.name}
+   560→          </button>
+   561→        ))}
+   562→      </div>
+   563→
+   564→      {/* Favorites view */}
+   565→      {activeCategory === FAVORITES_CAT_ID && (
+   566→        <section className="mb-8">
+   567→          <h2 className="mb-4 text-xl font-bold">{t('favorites.title')}</h2>
+   568→          {favoriteProducts.length === 0 && (
+   569→            <p className="text-sm text-muted-foreground">{t('favorites.empty')}</p>
+   570→          )}
+   571→          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   572→            {favoriteProducts.map((product) => renderProductCard(product))}
+   573→          </div>
+   574→        </section>
+   575→      )}
+   576→
+   577→      {/* Product grid */}
+   578→      {activeCategory !== FAVORITES_CAT_ID && categories.map((cat) => (
+   579→        <section key={cat.id} id={`cat-${cat.id}`} className="mb-8 scroll-mt-20">
+   580→          <h2 className="mb-4 text-xl font-bold">{cat.name}</h2>
+   581→          {cat.products.length === 0 && (
+   582→            <p className="text-sm text-muted-foreground">{t('menu.emptyCategory')}</p>
+   583→          )}
+   584→          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   585→            {cat.products.map((product) => renderProductCard(product))}
+   586→          </div>
+   587→        </section>
+   588→      ))}
+   589→    </>
+   590→  )
+   591→}
+   592→
+   593→// ── Main Component ───────────────────────────────────────
+   594→
+   595→export default function MenuView({ onCheckout, onCartCountChange }: MenuViewProps) {
+   596→  const t = useT()
+   597→  const brand = useBrand((s) => s.brand)
+   598→  const isAuthenticated = useAuth((s) => s.isAuthenticated)
+   599→  const primaryColor = brand?.primaryColor || '#e11d48'
+   600→
+   601→  // Data
+   602→  const [branches, setBranches] = useState<Branch[]>([])
+   603→  const [selectedBranchId, setSelectedBranchId] = useState<string>('')
+   604→
+   605→  // Cart
+   606→  const [cart, setCart] = useState<Cart | null>(null)
+   607→  const [cartOpen, setCartOpen] = useState(false)
+   608→  const [cartSubtotal, setCartSubtotal] = useState(0)
+   609→
+   610→  // Loading
+   611→  const [addingItemId, setAddingItemId] = useState<string | null>(null)
+   612→
+   613→  // Favorites
+   614→  const [favoriteProductIds, setFavoriteProductIds] = useState<Set<string>>(new Set())
+   615→
+   616→  // ── Load favorites ──────────────────────────────────────
+   617→  useEffect(() => {
+   618→    if (!isAuthenticated) {
+   619→      // Reset favorites when user logs out — using functional update
+   620→      return
+   621→    }
+   622→    let cancelled = false
+   623→    API.favorites.list().then(({ data }) => {
+   624→      if (cancelled || !data) return
+   625→      const ids = new Set((data as Array<{ productId: string }>).map((f) => f.productId))
+   626→      setFavoriteProductIds(ids)
+   627→    })
+   628→    return () => { cancelled = true }
+   629→  }, [isAuthenticated])
+   630→
+   631→  // ── Toggle favorite (optimistic) ───────────────────────
+   632→  async function handleToggleFavorite(productId: string) {
+   633→    const isFav = favoriteProductIds.has(productId)
+   634→    // Optimistic update
+   635→    setFavoriteProductIds((prev) => {
+   636→      const next = new Set(prev)
+   637→      if (isFav) next.delete(productId)
+   638→      else next.add(productId)
+   639→      return next
+   640→    })
+   641→    // API call
+   642→    const { error } = isFav
+   643→      ? await API.favorites.remove(productId)
+   644→      : await API.favorites.add(productId)
+   645→    // Revert on error
+   646→    if (error) {
+   647→      setFavoriteProductIds((prev) => {
+   648→        const next = new Set(prev)
+   649→        if (isFav) next.add(productId)
+   650→        else next.delete(productId)
+   651→        return next
+   652→      })
+   653→    }
+   654→  }
+   655→
+   656→  // ── Load branches ──────────────────────────────────────
+   657→  useEffect(() => {
+   658→    async function load() {
+   659→      const { data } = await API.branches.list()
+   660→      if (data && Array.isArray(data)) {
+   661→        const list = data as Branch[]
+   662→        setBranches(list)
+   663→        if (list.length > 0 && !selectedBranchId) {
+   664→          setSelectedBranchId(list[0].id)
+   665→        }
+   666→      }
+   667→    }
+   668→    load()
+   669→  }, [])
+   670→
+   671→  // ── Ensure cart exists ─────────────────────────────────
+   672→  useEffect(() => {
+   673→    if (!isAuthenticated || !selectedBranchId) return
+   674→    let cancelled = false
+   675→    API.cart.getOrCreate().then(({ data }) => {
+   676→      if (cancelled) return
+   677→      if (data) {
+   678→        setCart(data as Cart)
+   679→        setCartSubtotal(data.subtotal || 0)
+   680→        onCartCountChange(data.totalItems || 0)
+   681→        return
+   682→      }
+   683→      API.cart.create(selectedBranchId).then(({ data: newCart }) => {
+   684→        if (cancelled || !newCart) return
+   685→        const c = { ...newCart, totalItems: 0, subtotal: 0, items: [] }
+   686→        setCart(c)
+   687→        setCartSubtotal(0)
+   688→        onCartCountChange(0)
+   689→      })
+   690→    })
+   691→    return () => { cancelled = true }
+   692→  }, [isAuthenticated, selectedBranchId, onCartCountChange])
+   693→
+   694→  // ── Poll cart every 3s ─────────────────────────────────
+   695→  useEffect(() => {
+   696→    if (!isAuthenticated) return
+   697→    const interval = setInterval(async () => {
+   698→      const { data } = await API.cart.get()
+   699→      if (data) {
+   700→        setCart(data as Cart)
+   701→        setCartSubtotal(data.subtotal || 0)
+   702→        onCartCountChange(data.totalItems || 0)
+   703→      }
+   704→    }, 3000)
+   705→    return () => clearInterval(interval)
+   706→  }, [isAuthenticated, onCartCountChange])
+   707→
+   708→  // ── Add to cart ────────────────────────────────────────
+   709→  async function handleAddToCart(product: Product) {
+   710→    if (!isAuthenticated || addingItemId) return
+   711→    setAddingItemId(product.id)
+   712→    const { data } = await API.cart.addItem({
+   713→      productId: product.id,
+   714→      quantity: 1,
+   715→    })
+   716→    if (data) {
+   717→      const { data: fresh } = await API.cart.get()
+   718→      if (fresh) {
+   719→        setCart(fresh as Cart)
+   720→        setCartSubtotal(fresh.subtotal || 0)
+   721→        onCartCountChange(fresh.totalItems || 0)
+   722→      }
+   723→    }
+   724→    setAddingItemId(null)
+   725→  }
+   726→
+   727→  // ── Update item quantity ───────────────────────────────
+   728→  async function handleUpdateQuantity(itemId: string, newQty: number) {
+   729→    if (newQty <= 0) {
+   730→      await API.cart.removeItem(itemId)
+   731→    } else {
+   732→      await API.cart.updateItem(itemId, newQty)
+   733→    }
+   734→    const { data } = await API.cart.get()
+   735→    if (data) {
+   736→      setCart(data as Cart)
+   737→      setCartSubtotal(data.subtotal || 0)
+   738→      onCartCountChange(data.totalItems || 0)
+   739→    }
+   740→  }
+   741→
+   742→  return (
+   743→    <div className="mx-auto max-w-5xl px-4 pb-24 pt-4">
+   744→      {/* Branch selector */}
+   745→      <div className="mb-4 flex items-center gap-3">
+   746→        <Store className="size-4 text-muted-foreground shrink-0" />
+   747→        <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+   748→          <SelectTrigger className="w-full">
+   749→            <SelectValue placeholder={t('menu.selectBranch')} />
+   750→          </SelectTrigger>
+   751→          <SelectContent>
+   752→            {branches.map((b) => (
+   753→              <SelectItem key={b.id} value={b.id}>
+   754→                {b.name} — {b.address}
+   755→              </SelectItem>
+   756→            ))}
+   757→          </SelectContent>
+   758→        </Select>
+   759→      </div>
+   760→
+   761→      {/* Menu content — key resets component on branch change */}
+   762→      {selectedBranchId && (
+   763→        <MenuContent
+   764→          key={selectedBranchId}
+   765→          branchId={selectedBranchId}
+   766→          primaryColor={primaryColor}
+   767→          onAddToCart={handleAddToCart}
+   768→          favoriteProductIds={favoriteProductIds}
+   769→          onToggleFavorite={handleToggleFavorite}
+   770→        />
+   771→      )}
+   772→
+   773→      {/* ── Cart Sheet ──────────────────────────────────── */}
+   774→      <Sheet open={cartOpen} onOpenChange={setCartOpen}>
+   775→        <SheetContent side="right" className="flex w-full flex-col sm:max-w-md">
+   776→          <SheetHeader>
+   777→            <SheetTitle>{t('cart.title')}</SheetTitle>
+   778→            <SheetDescription>
+   779→              {cart?.totalItems
+   780→                ? `${cart.totalItems} ${pluralizeItems(t, cart.totalItems)}`
+   781→                : t('cart.empty')}
+   782→            </SheetDescription>
+   783→          </SheetHeader>
+   784→
+   785→          {cart && cart.items.length > 0 ? (
+   786→            <>
+   787→              <ScrollArea className="flex-1 -mx-4 px-4">
+   788→                <div className="space-y-4 py-2">
+   789→                  {cart.items.map((item) => (
+   790→                    <div key={item.id} className="flex gap-3">
+   791→                      <div className="flex-1 min-w-0">
+   792→                        <p className="font-medium text-sm truncate">
+   793→                          {item.product.name}
+   794→                        </p>
+   795→                        <p className="text-sm text-muted-foreground">
+   796→                          {Math.round(item.totalPrice)} ₴
+   797→                        </p>
+   798→                      </div>
+   799→                      <div className="flex items-center gap-1">
+   800→                        <Button
+   801→                          variant="outline"
+   802→                          size="icon"
+   803→                          className="size-7"
+   804→                          onClick={() =>
+   805→                            handleUpdateQuantity(item.id, item.quantity - 1)
+   806→                          }
+   807→                        >
+   808→                          <Minus className="size-3" />
+   809→                        </Button>
+   810→                        <span className="w-8 text-center text-sm font-medium">
+   811→                          {item.quantity}
+   812→                        </span>
+   813→                        <Button
+   814→                          variant="outline"
+   815→                          size="icon"
+   816→                          className="size-7"
+   817→                          onClick={() =>
+   818→                            handleUpdateQuantity(item.id, item.quantity + 1)
+   819→                          }
+   820→                        >
+   821→                          <Plus className="size-3" />
+   822→                        </Button>
+   823→                        <Button
+   824→                          variant="ghost"
+   825→                          size="icon"
+   826→                          className="size-7 text-destructive hover:text-destructive"
+   827→                          onClick={() => handleUpdateQuantity(item.id, 0)}
+   828→                        >
+   829→                          <Trash2 className="size-3" />
+   830→                        </Button>
+   831→                      </div>
+   832→                    </div>
+   833→                  ))}
+   834→                </div>
+   835→              </ScrollArea>
+   836→
+   837→              <Separator />
+   838→
+   839→              <SheetFooter className="flex-col gap-3 pt-2">
+   840→                <div className="flex w-full items-center justify-between text-lg font-bold">
+   841→                  <span>{t('common.total')}</span>
+   842→                  <span>{Math.round(cartSubtotal)} ₴</span>
+   843→                </div>
+   844→                <Button
+   845→                  className="w-full text-white"
+   846→                  style={{ backgroundColor: primaryColor }}
+   847→                  onClick={() => {
+   848→                    setCartOpen(false)
+   849→                    onCheckout()
+   850→                  }}
+   851→                >
+   852→                  {t('cart.checkout')}
+   853→                </Button>
+   854→              </SheetFooter>
+   855→            </>
+   856→          ) : (
+   857→            <div className="flex flex-1 items-center justify-center text-muted-foreground">
+   858→              <div className="text-center">
+   859→                <ShoppingCart className="mx-auto mb-3 size-10 opacity-40" />
+   860→                <p>{t('cart.empty')}</p>
+   861→              </div>
+   862→            </div>
+   863→          )}
+   864→        </SheetContent>
+   865→      </Sheet>
+   866→
+   867→      {/* ── Bottom Cart Bar ─────────────────────────────── */}
+   868→      {isAuthenticated && cart && cart.totalItems > 0 && (
+   869→        <div className="fixed bottom-0 left-0 right-0 z-30 border-t bg-background/95 backdrop-blur p-4">
+   870→          <div className="mx-auto flex max-w-5xl items-center justify-between">
+   871→            <div className="flex items-center gap-2">
+   872→              <ShoppingCart className="size-5" />
+   873→              <span className="text-sm font-medium">
+   874→                {cart.totalItems} {pluralizeItems(t, cart.totalItems)}
+   875→              </span>
+   876→            </div>
+   877→            <div className="flex items-center gap-4">
+   878→              <span className="font-bold">{Math.round(cartSubtotal)} ₴</span>
+   879→              <Button
+   880→                className="text-white"
+   881→                style={{ backgroundColor: primaryColor }}
+   882→                onClick={() => setCartOpen(true)}
+   883→              >
+   884→                {t('cart.title')}
+   885→              </Button>
+   886→            </div>
+   887→          </div>
+   888→        </div>
+   889→      )}
+   890→    </div>
+   891→  )
+   892→}
+   893→
+   894→// ── Helpers ──────────────────────────────────────────────
+   895→
+   896→function pluralizeItems(t: (key: string) => string, n: number): string {
+   897→  const mod10 = n % 10
+   898→  const mod100 = n % 100
+   899→  if (mod10 === 1 && mod100 !== 11) return t('cart.items_one')
+   900→  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return t('cart.items_few')
+   901→  return t('cart.items_many')
+   902→}

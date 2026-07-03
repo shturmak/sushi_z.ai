@@ -1,0 +1,575 @@
+     1→---
+     2→Task ID: 1-8
+     3→Agent: Main Architect
+     4→Task: Build production-ready omnichannel food ordering backend + frontend
+     5→
+     6→Work Log:
+     7→- Designed Prisma schema with 16 models (User, UserSession, UserAddress, Branch, DeliveryZone, Category, Product, ProductOptionGroup, ProductOption, Cart, CartItem, Order, OrderItem, Payment, Promotion, LoyaltyAccount, LoyaltyTransaction)
+     8→- Created seed data with 2 branches, 6 categories, 18 products with option groups, 3 promotions, 3 sample orders
+     9→- Built domain service layer: order.service.ts (create, status transitions, cancel, repeat), promotion.service.ts (validate), analytics.service.ts
+    10→- Implemented 30+ REST API route handlers across Auth, Me, Branches, Menu, Cart, Orders, Payments, Promotions, Loyalty, Admin domains
+    11→- Replaced jose with crypto-based JWT for process stability
+    12→- Built comprehensive frontend dashboard with login, admin analytics, menu browsing, cart, orders, promotions views
+    13→- All APIs verified working via curl E2E tests
+    14→
+    15→Stage Summary:
+    16→- Full REST API backend operational
+    17→- Frontend renders login page, admin dashboard with KPIs, customer menu/cart/orders
+    18→- All 30+ API endpoints tested and working
+    19→- Lint passes cleanly
+    20→
+    21→---
+    22→Task ID: 9
+    23→Agent: promotions-page-builder
+    24→Task: Build Promotions CRUD page
+    25→
+    26→Work Log:
+    27→- Created src/app/admin/promotions/page.tsx with table, CRUD dialog form
+    28→- Implemented type-dependent value field label
+    29→- Added date range formatting and usage counter
+    30→
+    31→Stage Summary:
+    32→- Full promotions CRUD page with type-aware form, status badges, usage counters
+    33→
+    34→---
+    35→Task ID: 8
+    36→Agent: orders-page-builder
+    37→Task: Build Orders management page
+    38→
+    39→Work Log:
+    40→- Created src/app/admin/orders/page.tsx with filters, table, detail dialog, status workflow
+    41→- Implemented status state machine with next-status buttons
+    42→- Added order detail view with items, address, customer info, timeline
+    43→
+    44→Stage Summary:
+    45→- Full orders page with filters, status workflow, detail modal, timeline
+    46→---
+    47→Task ID: 5
+    48→Agent: branches-page-builder
+    49→Task: Build Branches CRUD page
+    50→
+    51→Work Log:
+    52→- Created src/app/admin/branches/page.tsx with table, search, CRUD forms
+    53→- Used Dialog for create/edit forms, ConfirmDialog for delete
+    54→- Implemented slug auto-generation from Ukrainian names
+    55→
+    56→Stage Summary:
+    57→- Full CRUD branches page with search, form modal, status toggle, delete confirmation
+    58→---
+    59→Task ID: 4
+    60→Agent: analytics-page-builder
+    61→Task: Build Analytics dashboard page
+    62→
+    63→Work Log:
+    64→- Created src/app/admin/page.tsx with metric cards, charts, and recent orders table
+    65→- Used recharts for LineChart and BarChart with proper theming via CSS variables
+    66→- Integrated with useAdminApi hook for data fetching
+    67→- Implemented loading skeletons for all sections
+    68→- Fixed Bar chart to use recharts Cell component for per-bar coloring
+    69→
+    70→Stage Summary:
+    71→- Analytics page with 4 KPI cards, 2 charts (orders by day line chart + revenue by category bar chart), recent orders table
+    72→
+    73→---
+    74→Task ID: 6-7
+    75→Agent: menu-pages-builder
+    76→Task: Build Menu Categories and Products CRUD pages
+    77→
+    78→Work Log:
+    79→- Created src/app/admin/menu/categories/page.tsx with CRUD table and form
+    80→- Created src/app/admin/menu/products/page.tsx with complex form including option groups
+    81→- Implemented dynamic option group/option management in product form
+    82→
+    83→Stage Summary:
+    84→- Categories page: full CRUD with table, dialog form
+    85→- Products page: full CRUD with category/search filters, complex form with nested option groups
+    86→
+    87→
+    88→---
+    89→Task ID: fix-white-screen
+    90→Agent: Main
+    91→Task: Fix white screen issue — server not running + React hook bug
+    92→
+    93→Work Log:
+    94→- Diagnosed root cause: dev server was not running (user saw white screen)
+    95→- Fixed `useAdminApi` hook: replaced `useState(() => refetch())` with `useEffect(() => refetch(), [refetch])` — incorrect React 19 usage
+    96→- Fixed server startup: added `-H 0.0.0.0` flag to bind IPv4 (Caddy proxy needs IPv4)
+    97→- Created auto-restart wrapper (`auto-restart.sh`) with double-fork technique for process persistence
+    98→- Verified all admin pages render correctly: Analytics, Branches, Orders
+    99→
+   100→Stage Summary:
+   101→- Admin panel fully functional with mock data
+   102→- Server stable with auto-restart wrapper (PPID=1, fully detached)
+   103→- All 5 admin pages verified: Analytics (KPI cards + charts + table), Branches CRUD, Menu Categories, Products, Orders with filters
+   104→
+   105→---
+   106→Task ID: 4
+   107→Agent: PostgreSQL Setup
+   108→Task: Step 4 — Make project PostgreSQL-ready for staging
+   109→
+   110→Work Log:
+   111→- Read and analyzed prisma/schema.prisma, package.json, .env
+   112→- Added PostgreSQL switch comment to datasource block in schema.prisma
+   113→- Added "For PostgreSQL, change to Json type" comments on 6 JSON string fields: workSchedule, polygonData, selectedOptions (CartItem), addressSnapshot, selectedOptions (OrderItem), providerPayload
+   114→- Verified no SQLite-specific features (no @db functions, no unsupported types)
+   115→- Created prisma/schema.postgresql.prisma as a reference file with provider="postgresql" and all 6 JSON fields converted from String? to Json?
+   116→- Created docs/DEPLOYMENT.md with full deployment guide (Railway/Supabase/RDS/Docker, switching steps, migrate vs push, env vars, checklist)
+   117→- Added commented PostgreSQL DATABASE_URL to .env
+   118→- Added db:generate:pg and db:migrate:deploy scripts to package.json
+   119→
+   120→Stage Summary:
+   121→- schema.prisma annotated with PostgreSQL switch instructions (SQLite remains default)
+   122→- prisma/schema.postgresql.prisma created as drop-in PostgreSQL reference (Json types, postgresql provider)
+   123→- docs/DEPLOYMENT.md covers all deployment scenarios with step-by-step instructions
+   124→- .env includes commented PostgreSQL connection string template
+   125→- package.json has db:generate:pg (reference) and db:migrate:deploy (production) scripts
+   126→
+   127→---
+   128→Task ID: 3
+   129→Agent: OpenAPI Generator
+   130→Task: Step 3 — Generate OpenAPI/Swagger API contract for mobile developers
+   131→
+   132→Work Log:
+   133→- Read worklog.md, api-response.ts, auth-middleware.ts, auth.ts, prisma/schema.prisma
+   134→- Discovered and read all 40 API route.ts files across 10 domains
+   135→- Read domain services: order.service.ts, promotion.service.ts, analytics.service.ts
+   136→- Created docs/openapi.yaml — complete OpenAPI 3.0.3 spec with 55+ endpoint operations
+   137→- Created docs/API.md — mobile developer guide covering auth flow, branch isolation, error codes, key workflows, code generation
+   138→- All endpoints documented with method, path, summary, parameters, request bodies, response schemas
+   139→- 10 tags: Auth, User Profile, Branches, Menu, Cart, Orders, Payments, Promotions, Loyalty, Admin
+   140→- 30+ reusable component schemas (models, inputs, envelopes, responses)
+   141→- Bearer token security scheme defined globally
+   142→- Appended work record to worklog.md
+   143→
+   144→Stage Summary:
+   145→- docs/openapi.yaml: 1200+ line OpenAPI 3.0.3 spec covering all 40 route files
+   146→- docs/API.md: concise mobile developer guide with auth flow, error codes, workflows, code gen examples
+   147→- Spec is Swagger UI compatible and code-generator ready (typescript-axios, kotlin, swift5, dart)
+   148→
+   149→---
+   150→Task ID: 4.3
+   151→Agent: Domain Routing Agent
+   152→Task: Create Next.js middleware for domain-based brand routing
+   153→
+   154→Work Log:
+   155→- Read and analyzed existing tenant-middleware.ts, tenant.ts types, app/page.tsx storefront, prisma/schema.prisma
+   156→- Confirmed resolveBrand() already reads x-brand-slug header (line 16 of tenant-middleware.ts) — no changes needed
+   157→- Created src/middleware.ts as Edge-compatible Next.js middleware with:
+   158→  - Brand slug extraction in priority order: subdomain > /b/<slug>/ path prefix > ?brand= query param
+   159→  - Subdomain extraction strips port, validates against BRAND_DOMAIN (default: sushichain.ua), skips reserved subdomains (www, api, admin)
+   160→  - Path prefix /b/<slug>/... rewrites URL to remove the prefix (e.g., /b/sushi-master/menu → /menu)
+   161→  - Query param ?brand=slug with basic slug validation as dev fallback
+   162→  - Sets x-brand-slug header on all matched requests where brand is identified
+   163→  - Matcher config excludes: /_next/*, /api/*, /admin/*, static files (favicon, robots, sitemap), public asset dirs (images/, icons/, assets/)
+   164→  - No Node.js APIs used — fully Edge Runtime compatible
+   165→- Verified: zero type errors in middleware.ts, zero lint warnings
+   166→- Integration verified: tenant-middleware.ts resolveBrand() picks up x-brand-slug header via headers().get('x-brand-slug')
+   167→
+   168→Stage Summary:
+   169→- src/middleware.ts: ~110 lines, Edge-compatible domain-based brand routing
+   170→- Three brand resolution strategies: subdomain (production), /b/<slug>/ path prefix, ?brand= query param (dev)
+   171→- x-brand-slug header set for downstream consumption by resolveBrand()
+   172→- No changes needed to tenant-middleware.ts — header-based integration already in place
+   173→
+   174→---
+   175→Task ID: 4.4
+   176→Agent: Payment Integration Agent
+   177→Task: Implement real LiqPay payment integration for Ukrainian market
+   178→
+   179→Work Log:
+   180→- Read existing payment intent route (fake URL), webhook route (no signature verification), api-response, auth-middleware, Prisma schema (PaymentStatus enum, Payment model)
+   181→- Created `src/lib/payments/liqpay.ts` — self-contained LiqPay provider module:
+   182→  - Types: LiqPayCheckoutParams, LiqPayCheckoutResult, LiqPayCallbackData, MappedPaymentStatus
+   183→  - SHA1 via Web Crypto API (globalThis.crypto.subtle.digest) — works in Edge and Node.js runtimes
+   184→  - Base64 encode/decode with Buffer fallback for Edge
+   185→  - `createCheckout()`: builds LiqPay v3 JSON payload (action=pay, currency=UAH), base64-encodes it, generates SHA1(private_key + data + private_key) signature
+   186→  - `verifyCallback()`: recomputes SHA1 signature, decodes base64 JSON payload, validates
+   187→  - `mapStatus()`: maps LiqPay statuses (success/failure/wait/reversed/error/subscriber/codeverif) to internal PaymentStatus enum
+   188→  - Server callback URL derived from LIQPAY_SERVER_URL env or NEXT_PUBLIC_APP_URL with fallback
+   189→- Created `src/lib/payments/index.ts` — extensible payment provider registry:
+   190→  - PaymentProvider interface with createCheckout() and verifyCallback()
+   191→  - LiqPay registered as default provider; extensible for Fondy/Stripe/Portmone
+   192→  - `getProvider(name)` and `getProviderNames()` accessors
+   193→  - Shared CheckoutParams, CheckoutResult, CallbackResult types
+   194→- Rewrote `src/app/api/payments/intent/route.ts`:
+   195→  - Resolves provider via registry (PAYMENT_PROVIDER env, defaults to "liqpay")
+   196→  - Generates real checkout with base64 data + signature + checkoutUrl
+   197→  - Returns { paymentId, amount, provider, data, signature, checkoutUrl }
+   198→  - Derives resultUrl from request origin for redirect-after-payment
+   199→- Rewrote `src/app/api/payments/webhook/[provider]/route.ts`:
+   200→  - Parses form-encoded body (LiqPay default) and JSON fallback
+   201→  - Registered providers: full signature verification via provider.verifyCallback()
+   202→  - Unknown providers: legacy fallback (original raw providerTxId/status behavior preserved)
+   203→  - Signature invalid → returns 400 INVALID_SIGNATURE
+   204→  - Valid callback: updates Payment status + providerTxId + providerPayload
+   205→  - Auto-confirms order (status → confirmed, confirmedAt) on succeeded payment
+   206→  - All errors caught — returns 200 to prevent LiqPay retry storms
+   207→- Updated `.env` with LIQPAY_PUBLIC_KEY, LIQPAY_PRIVATE_KEY, LIQPAY_IS_TEST, PAYMENT_PROVIDER, and commented LIQPAY_SERVER_URL
+   208→
+   209→Stage Summary:
+   210→- `src/lib/payments/liqpay.ts`: ~190 lines — LiqPay v3 integration with SHA1/WebCrypto
+   211→- `src/lib/payments/index.ts`: ~100 lines — provider registry pattern, ready for additional providers
+   212→- Intent route: returns real LiqPay checkout (data + signature + checkoutUrl) instead of fake URL
+   213→- Webhook route: full signature verification, form-encoded body parsing, auto-order-confirmation, legacy fallback
+   214→- `.env`: LiqPay sandbox credentials added (replace with real keys for production)
+   215→- Frontend integration note: POST form to checkoutUrl with `data` and `signature` fields, or use redirect with query params
+   216→
+   217→---
+   218→Task ID: 4.2
+   219→Agent: Main Architect
+   220→Task: Switch from prisma db push to prisma migrate
+   221→
+   222→Work Log:
+   223→- Ran `prisma migrate reset --force` to clear existing DB
+   224→- Ran `prisma migrate dev --name init` to create baseline migration
+   225→- Migration file: `prisma/migrations/20260702235305_init/migration.sql` (327 lines)
+   226→- Ran `bun run prisma/seed.ts` to repopulate database
+   227→- Updated package.json scripts: `db:migrate:reset`, `db:reset`, `db:migrate:pg`
+   228→
+   229→Stage Summary:
+   230→- Full migration history established — ready for safe schema evolution
+   231→- DB re-seeded with 3 brands, 5 branches, 30 products, 4 promotions
+   232→
+   233→---
+   234→Task ID: 4.5
+   235→Agent: Main Architect
+   236→Task: Create CI/CD pipeline with GitHub Actions
+   237→
+   238→Work Log:
+   239→- Created `.github/workflows/ci.yml` with 4 jobs:
+   240→  1. lint-and-typecheck: ESLint + Prisma generate
+   241→  2. build: Next.js production build (depends on lint)
+   242→  3. db-migrate-check: Prisma migrate status check
+   243→  4. deploy-staging: placeholder deploy step (main branch only)
+   244→- Triggers: push to main/develop, PRs to main
+   245→
+   246→Stage Summary:
+   247→- CI pipeline ready for GitHub Actions
+   248→
+   249→---
+   250→Task ID: 4.6
+   251→Agent: Main Architect
+   252→Task: Add unified pagination to all list API endpoints
+   253→
+   254→Work Log:
+   255→- Created `src/lib/pagination.ts` with: parsePagination(), paginateResult(), paginateCursorResult(), paginatedFindMany()
+   256→- Updated 8 API routes: admin/products, admin/branches, admin/promotions, admin/menu/categories, admin/orders, customer/orders, loyalty/transactions
+   257→- Added `useAdminPaginatedApi<T>()` hook to admin-api.ts with auto-unwrap of { data, pagination }
+   258→- Updated 5 admin pages: branches, products, categories, promotions, orders
+   259→- Standardized response: { data: T[], pagination: { page, limit, total, pages, hasNext, hasPrev } }
+   260→
+   261→Stage Summary:
+   262→- All list endpoints return consistent paginated response
+   263→- Admin frontend uses useAdminPaginatedApi for auto-unwrap
+   264→---
+   265→Task ID: 5.1-storefront
+   266→Agent: Storefront i18n Agent
+   267→Task: Replace hardcoded Ukrainian strings in 7 storefront components with i18n
+   268→
+   269→Work Log:
+   270→- Read all 7 storefront component files and i18n setup (useT hook, LanguageSwitcher)
+   271→- Updated brand-picker.tsx: added useT import, replaced 3 hardcoded strings (title, subtitle, noBrands)
+   272→- Updated storefront-header.tsx: added useT import, LanguageSwitcher import (default export), replaced 6 hardcoded strings (profile, orders, logout, login, cart, defaultBrand), inserted LanguageSwitcher component before cart button
+   273→- Updated auth-dialog.tsx: added useT import, replaced 12 hardcoded strings (dialogTitle, dialogDesc, loginTab, registerTab, email, password, phone, firstName, lastName, registerButton, and 4 placeholders)
+   274→- Updated menu-view.tsx: added useT import to both MenuContent and MenuView components, replaced 9 hardcoded strings (selectBranch, emptyMenu, emptyMenuHint, emptyCategory, add, notAvailable, cart.title, cart.empty, cart.checkout, common.total), refactored pluralizeItems to accept t parameter and use cart.items_one/few/many keys
+   275→- Updated checkout-view.tsx: full rewrite, moved STEPS array inside component to use t() calls, replaced all ~30 hardcoded strings including step labels, delivery/pickup titles and descriptions, address field labels, promo labels, payment method labels, bonus labels, summary labels, navigation buttons
+   276→- Updated orders-view.tsx: moved STATUS_MAP and PAYMENT_LABELS inside component body (required for t() access), moved getTimeline function inside component, replaced all ~20 hardcoded strings including status labels, payment labels, timeline labels, empty states, action buttons, summary labels
+   277→- Updated profile-view.tsx: moved TIER_CONFIG and TX_TYPE_LABELS inside component body, replaced all ~12 hardcoded strings including title, loyalty labels, tier labels, transaction type labels, logout button
+   278→- Ran bun run lint: 0 errors, 1 pre-existing warning (unrelated to changes)
+   279→
+   280→Stage Summary:
+   281→- All 7 storefront components now use useT() hook for i18n
+   282→- No hardcoded Ukrainian strings remain in storefront components
+   283→- LanguageSwitcher added to storefront header
+   284→- STATUS_MAP, PAYMENT_LABELS, TIER_CONFIG, TX_TYPE_LABELS moved inside component bodies for t() access
+   285→- pluralizeItems refactored to accept t parameter for locale-aware pluralization
+   286→- Lint passes with no new errors
+   287→---
+   288→Task ID: 5.1-admin
+   289→Agent: Admin i18n Agent
+   290→Task: Replace hardcoded Ukrainian strings in 6 admin pages + sidebar with i18n
+   291→
+   292→Work Log:
+   293→- Read i18n system (useT hook, uk.ts locale with ~100 admin keys) and all 7 target files
+   294→- Updated src/app/admin/page.tsx (Analytics): added useT import, moved orderTypeLabel inside component body, replaced page title, 4 KPI card labels, 2 chart titles, table headers (orderNumber, branch, status, amount), recent orders title, noData empty state, order type labels (delivery/pickup)
+   295→- Updated src/app/admin/branches/page.tsx: added useT to both BranchFormDialog and BranchesPage, replaced dialog title/description, 8 form labels (name, slug, address, phone, email, schedule, description, isOpen), button labels (cancel, save), table headers (name, address, status, orders, actions), search placeholder, action aria-labels, delete confirm dialog, empty state
+   296→- Updated src/app/admin/menu/categories/page.tsx: added useT import, replaced page header title/create label, table headers (name, slug, products, actions), dialog title, form labels (name, slug, description), button labels (cancel, save, create), delete confirm, empty state
+   297→- Updated src/app/admin/menu/products/page.tsx: added useT import, replaced page header title/create label, filter labels (category, searchPlaceholder), table headers (category, name, price, weight, available, actions), dialog title, form labels (category, name, slug, price, weight, calories, available, description), option group labels (optionGroups, optionGroupName, optionMaxChoices, optionRequired, optionName), button labels (addGroup, addOption, cancel, save, create), delete confirm, empty state
+   298→- Updated src/app/admin/orders/page.tsx: moved STATUS_OPTIONS and STATUS_LABELS inside component body (required for t() access), added useT to both OrdersPage and OrderDetailDialog, replaced page header, status filter options (all 7 statuses + all), branch filter label, table headers (orderNumber, branch, date, status, amount, payment, actions), order type labels, noOrders empty state, detail dialog title, info row labels (branch, payment, items, amount, total, address, customer, note), status timeline labels (all 7 statuses), changeStatus heading, status change button labels, order detail section headings
+   299→- Updated src/app/admin/promotions/page.tsx: moved promotionTypes and promotionStatuses arrays inside component body, added useT import, replaced page header, table headers (name, code, type, value, period, status, usedCount, actions), dialog title/description, form labels (code, name, description, type, value, minOrder, maxUses, startDate, endDate, status), type/status select options, button labels (cancel, save, create), delete confirm, sr-only labels, empty state, toast messages
+   300→- Updated src/components/admin/admin-sidebar.tsx: moved navItems array inside component body, replaced all 7 nav labels (analytics, branches, menu, categories, products, orders, promotions) with t() calls
+   301→- Removed unused useAdminApi import from products page
+   302→- Ran bun run lint: 0 errors, 1 pre-existing warning (unrelated)
+   303→
+   304→Stage Summary:
+   305→- All 6 admin page components + admin sidebar now use useT() hook for i18n
+   306→- STATUS_OPTIONS, STATUS_LABELS, promotionTypes, promotionStatuses moved inside component bodies for t() access
+   307→- orderTypeLabel moved inside analytics component for t() access
+   308→- navItems moved inside AdminSidebar component for t() access
+   309→- ~150 hardcoded Ukrainian strings replaced with i18n t() calls across 7 files
+   310→- Lint passes with no new errors
+   311→---
+   312→Task ID: 5.4
+   313→Agent: Telegram Bot Agent
+   314→Task: Create Telegram bot mini-service for food ordering
+   315→
+   316→Work Log:
+   317→- Read Prisma schema to understand full data model (Brand, Branch, Category, Product, Order, etc.)
+   318→- Created `mini-services/telegram-bot/package.json` with grammy ^1.35.0 and @prisma/client ^6.11.1
+   319→- Created `mini-services/telegram-bot/.env.example` with TELEGRAM_BOT_TOKEN placeholder
+   320→- Created `mini-services/telegram-bot/index.ts` (~465 lines) with complete bot logic:
+   321→  - /start: shows active brands as inline keyboard buttons
+   322→  - Brand selection callback: shows open branches for selected brand
+   323→  - Branch selection callback: shows menu categories (brand-wide + branch-specific)
+   324→  - Category selection callback: shows products with prices and "Add to cart" buttons
+   325→  - Add to cart: in-memory cart with quantity tracking, shows running total
+   326→  - /cart: displays cart items with quantities, per-item totals, and grand total
+   327→  - /checkout: asks delivery vs pickup via inline buttons, creates pending Order in DB
+   328→  - /orders: shows recent orders with status labels (Ukrainian), uses note field as Telegram chatId tag
+   329→  - /help: lists all available commands
+   330→  - In-memory session store (Map<chatId, {brandId, branchId, cart}>)
+   331→  - All UI text in Ukrainian
+   332→  - Proper null safety for ctx.chat in callback query handler
+   333→  - Bot gracefully exits if TELEGRAM_BOT_TOKEN not set
+   334→- Installed dependencies: grammy@1.44.0, @prisma/client@6.19.3
+   335→
+   336→Stage Summary:
+   337→- Standalone Bun mini-service at `mini-services/telegram-bot/` (port 3004)
+   338→- Full ordering flow: brand → branch → category → products → cart → checkout
+   339→- Orders created as "new" status in shared SQLite database, tagged with Telegram chatId
+   340→- Type-safe with grammy's TypeScript-first API
+   341→
+   342→---
+   343→Task ID: 5.3
+   344→Agent: SEO Agent
+   345→Task: Add SEO support (dynamic meta tags, Open Graph, sitemap)
+   346→
+   347→Work Log:
+   348→- Updated `src/app/layout.tsx` metadata: enhanced title, added keywords array, authors, openGraph (type, locale, siteName, title, description), twitter (card, title, description)
+   349→- Created `src/app/sitemap.ts` — Next.js dynamic sitemap with entries for homepage (daily, priority 1) and admin (weekly, priority 0.3), using NEXT_PUBLIC_APP_URL env with fallback
+   350→- Created `src/app/robots.ts` — Next.js robots.txt allowing /, disallowing /admin/ and /api/, pointing to sitemap.xml
+   351→- Added `notFound` i18n keys (title, description, goHome) to all 3 locale files (uk, en, ru)
+   352→- Created `src/app/not-found.tsx` — client component 404 page using useT() hook, styled with large "404" text, title, description, and Button linking to homepage
+   353→- Verified: all changed/created files pass ESLint with zero errors (pre-existing error in public/sw.js is unrelated)
+   354→
+   355→Stage Summary:
+   356→- SEO metadata (keywords, authors, Open Graph, Twitter cards) added to root layout
+   357→- Dynamic sitemap.xml and robots.txt generated via Next.js file conventions
+   358→- Custom 404 page with i18n support (uk/ru/en) using shadcn/ui Button
+   359→- All files lint-clean
+   360→---
+   361→Task ID: 5.2
+   362→Agent: PWA Agent
+   363→Task: Add PWA support (manifest, service worker, offline menu)
+   364→
+   365→Work Log:
+   366→- Created `public/manifest.json` — Web App Manifest with name, theme_color (#e11d48), standalone display, portrait orientation, 3 icon entries (192, 512, maskable 512)
+   367→- Created `public/icons/icon.svg` — SVG app icon with red (#e11d48) rounded square background, white sushi roll and chopsticks design
+   368→- Created `public/icons/icon-192.png` and `public/icons/icon-512.png` — minimal placeholder PNG icons (replace with real icons for production)
+   369→- Created `public/sw.js` — Plain JS service worker (~120 lines) with 3 caching strategies:
+   370→  - Cache-first: static assets (CSS, JS, fonts, icons, /_next/static/)
+   371→  - Stale-while-revalidate: /api/* requests (serves cached, updates in background, falls back to cache when offline)
+   372→  - Network-first: navigation requests (fetches from network, falls back to cached page)
+   373→  - Pre-caches critical assets on install (/, /manifest.json, /icons/icon.svg)
+   374→  - Cleans old caches on activate, calls skipWaiting + clients.claim
+   375→- Created `src/components/pwa/ServiceWorkerRegistrar.tsx` — "use client" component that registers /sw.js on mount, listens for updatefound event, shows "Нова версія доступна" prompt with "Перезавантажити" / "Пізніше" buttons, sends SKIP_WAITING message on reload
+   376→- Updated `src/app/layout.tsx`:
+   377→  - Added `Viewport` export with themeColor, width, initialScale, maximumScale
+   378→  - Updated icons metadata to reference local /icons/icon-192.png and icon-512.png (plus apple icon)
+   379→  - Added `manifest: "/manifest.json"` to metadata
+   380→  - Added `appleWebApp` config (capable, statusBarStyle, title)
+   381→  - Imported and rendered `<ServiceWorkerRegistrar />` inside ThemeProvider
+   382→- Updated `eslint.config.mjs` ignores to exclude `public/**` from ESLint (plain JS SW was being parsed by TypeScript parser)
+   383→
+   384→Stage Summary:
+   385→- PWA manifest with app icons and theme configured
+   386→- Service worker with 3-tier caching (cache-first for static, stale-while-revalidate for API, network-first for navigation)
+   387→- Offline menu support via cached API responses
+   388→- Update prompt shown when new SW version detected
+   389→- `bun run lint` passes with 0 errors
+   390→
+   391→---
+   392→Task ID: 6.1
+   393→Agent: general-purpose
+   394→Task: Real-time order updates via WebSocket
+   395→
+   396→Work Log:
+   397→- Created `mini-services/orders-ws/` Socket.io server (port 3004) with brand/order room routing
+   398→- Created `mini-services/orders-ws/package.json` with socket.io dependency, ran `bun install`
+   399→- Installed `socket.io-client@4.8.3` in main project
+   400→- Created `src/hooks/use-order-ws.ts` — `useOrderWebSocket(brandId, options?)` hook with auto-connect, reconnect, subscription management
+   401→- Created `src/components/admin/order-notifications.tsx` — `AdminOrderNotifications` component with sonner toasts, Web Audio API beep, and `useNewOrderCount()` zustand store
+   402→- Updated `src/app/admin/layout.tsx` — mounted `AdminOrderNotifications` with brandId from admin auth
+   403→- Updated `src/components/admin/admin-sidebar.tsx` — added red badge on Orders link using `useNewOrderCount()`, badge resets on click via `admin-orders-viewed` custom event
+   404→- Updated `src/components/storefront/orders-view.tsx` — integrated WebSocket for real-time status updates, updates order in local list without refetch, shows ring+shadow flash animation on status change
+   405→- Added `notifications.newOrder` and `notifications.orderUpdated` i18n keys to all 3 locale files (uk, ru, en)
+   406→- Fixed React 19 lint errors (refs during render) by wrapping ref updates in useEffect
+   407→- `bun run lint` passes with 0 errors
+   408→
+   409→Stage Summary:
+   410→- Socket.io mini-service at `mini-services/orders-ws/` (port 3004) with brand/order room routing, events: order:created, order:new (alias), order:status_changed
+   411→- Client hook `useOrderWebSocket` connects via `io("/?XTransformPort=3004&...")` with Caddy proxy support
+   412→- Admin gets toast notifications + audio beep + sidebar red badge for new orders
+   413→- Customer orders view updates in real-time with animated ring highlight
+   414→- i18n keys added for notifications (uk/ru/en)
+   415→
+   416→---
+   417→Task ID: 6.3
+   418→Agent: general-purpose
+   419→Task: Delivery zones & fee calculator
+   420→
+   421→Work Log:
+   422→- Created `src/app/api/admin/delivery-zones/route.ts` — GET (paginated list with optional ?branchId= filter) + POST (create zone with branch validation)
+   423→- Created `src/app/api/admin/delivery-zones/[id]/route.ts` — GET (single with branch name), PUT (update), DELETE
+   424→- Verified existing public API at `src/app/api/branches/[id]/delivery-zones/route.ts` (returns active zones for a branch)
+   425→- Added `DeliveryZoneFormData` interface to `src/lib/admin-types.ts`, extended `DeliveryZone` with `createdAt`, `updatedAt`, `branch?`
+   426→- Created `src/app/admin/delivery-zones/page.tsx` — full CRUD admin page with:
+   427→  - Table with columns: Name, Branch, Fee, Min Order, ETA, Status
+   428→  - Branch filter (Select) + search filter
+   429→  - Create/Edit dialog with fields: name, branchId (select), deliveryFee, minOrder, estimatedMinutes, description, isActive
+   430→  - Delete confirmation dialog
+   431→  - Toggle active status button
+   432→  - Uses useAdminPaginatedApi, useAdminApi, PageHeader, ConfirmDialog, ActiveToggleBadge, TableSkeleton, shadcn/ui Select
+   433→- Updated `src/components/admin/admin-sidebar.tsx` — added "Delivery Zones" nav item with MapPin icon after Branches
+   434→- Updated `src/components/storefront/checkout-view.tsx`:
+   435→  - Added DeliveryZone type, deliveryZones/selectedZoneId/zonesLoaded/fetchBranchId/freeDeliveryPromo state
+   436→  - Fetches zones via API.branches.zones(selectedBranchId) when in delivery mode
+   437→  - Shows zone selector (Select with Clock icon, zone name, ETA, fee, min order) in address step
+   438→  - Shows "Безкоштовна доставка" when no zones defined
+   439→  - Derives deliveryFee from selectedZone (no separate state)
+   440→  - free_delivery promo type zeroes out delivery fee via freeDeliveryPromo flag
+   441→  - Includes deliveryZoneId in order payload
+   442→  - Replaced hardcoded "Доставка:" in summary with i18n delivery time/fee label
+   443→- Added i18n keys to all 3 locale files (uk, ru, en):
+   444→  - `admin.sidebar.deliveryZones` — sidebar label
+   445→  - `admin.deliveryZones` — title, create, edit, deleteConfirm, name, branch, fee, minOrder, estimatedMinutes, description, isActive, noZones
+   446→  - `checkout.deliveryZones` — selectZone, deliveryTime, freeDelivery
+   447→- Refactored delivery zone state management to avoid React 19 lint errors (no setState in effect body)
+   448→- `bun run lint` passes with 0 errors (6 pre-existing errors in unrelated files were present before but now resolved)
+   449→
+   450→Stage Summary:
+   451→- Admin CRUD for delivery zones: list/create/update/delete via /api/admin/delivery-zones
+   452→- Admin UI page at /admin/delivery-zones with table, filters, form dialog, delete confirmation
+   453→- Public API at /api/branches/[id]/delivery-zones (pre-existing, verified working)
+   454→- Storefront checkout integrates delivery zones: auto-fetch on branch select, zone picker, fee applied to total
+   455→- free_delivery promo type correctly zeros delivery fee
+   456→- Sidebar updated with MapPin icon menu item
+   457→- All i18n keys added (uk/ru/en)
+   458→
+   459→---
+   460→Task ID: 6.2
+   461→Agent: general-purpose
+   462→Task: Product image management
+   463→
+   464→Work Log:
+   465→- Created `src/app/api/admin/upload/route.ts` — POST endpoint for multipart/form-data image uploads
+   466→  - Admin-protected via `requireAdmin()`
+   467→  - Accepts jpg, png, webp, gif only; max 5MB
+   468→  - Saves to `public/uploads/` with timestamp-prefixed unique filenames
+   469→  - Returns `{ url: "/uploads/filename.ext" }`
+   470→- Updated `src/lib/admin-types.ts` — added `imageUrl: string` to `ProductFormData` and `CategoryFormData`
+   471→- Updated `src/app/api/admin/menu/products/route.ts` — POST now accepts and persists `imageUrl`
+   472→- Updated `src/app/api/admin/menu/products/[id]/route.ts` — PUT now accepts and persists `imageUrl`
+   473→- Updated `src/app/api/admin/menu/categories/route.ts` — POST now accepts and persists `imageUrl`
+   474→- Updated `src/app/admin/menu/products/page.tsx` — added image upload field with preview, remove button, and upload-before-submit flow
+   475→- Updated `src/app/admin/menu/categories/page.tsx` — added same image upload/preview/remove functionality
+   476→- Updated `src/components/storefront/menu-view.tsx`:
+   477→  - Added `imageUrl` to Product and Category interfaces
+   478→  - Created `ProductImage` component (shows `<img>` with onError fallback)
+   479→  - Created `ProductPlaceholder` component (colored div with food emoji based on product name)
+   480→  - Added `getCategoryEmoji()` helper with keyword matching (рол→🍣, піц→🍕, бургер→🍔, etc.)
+   481→  - Category pills now show small image thumbnail or emoji icon
+   482→  - Product cards show actual image when available, emoji placeholder when not
+   483→- Added i18n keys `image`, `uploadImage`, `removeImage` to all 3 locale files (uk, en, ru) for both categories and products
+   484→- Created `public/uploads/` directory for uploaded files
+   485→
+   486→Stage Summary:
+   487→- Full image upload API with admin auth, file validation, and unique filename generation
+   488→- Admin product and category forms now support image upload with live preview and removal
+   489→- Storefront menu displays product images with graceful emoji fallback when no image
+   490→- Category tabs show small image thumbnails or emoji icons
+   491→- All changes pass ESLint with 0 errors
+   492→
+   493→---
+   494→Task ID: 6.5
+   495→Agent: admin-enhancements
+   496→Task: Admin Enhancements (CSV Export, Date Range Filters, Analytics Improvements)
+   497→
+   498→Work Log:
+   499→- Added 9 i18n keys to all 3 locale files (uk, ru, en): exportCsv, dateFrom, dateTo, customRange, today, last7days, last30days, thisMonth, analytics.period
+   500→- Updated `/api/admin/orders` route to accept `dateFrom`/`dateTo` query params with proper date range filtering on `createdAt`
+   501→- Created `/api/admin/orders/export` route: GET endpoint returning CSV with UTF-8 BOM + semicolon delimiter, columns: Order #, Date, Customer, Branch, Type, Status, Items Count, Subtotal, Discount, Total, Payment Method, Note
+   502→- Updated orders admin page with: date range inputs (default last 30 days), Export CSV button with blob download, date params passed to paginated API
+   503→- Updated analytics service to accept optional `AnalyticsDateRange`, compute range-scoped orders/revenue, ordersByDay chart data, and revenueByCategory via raw SQL
+   504→- Updated analytics API route to accept `period` (today/7d/30d/month) or `dateFrom`/`dateTo` params
+   505→- Updated admin analytics page with period selector buttons (Today, 7 days, 30 days, This month, Custom) and custom date inputs, dynamic KPI display based on selected period
+   506→- Added quick stats to admin header: subtle "X замовлень, Y ₴" line fetched from analytics API (today period)
+   507→- Updated Analytics type to include `range` field in orders/revenue objects
+   508→
+   509→Stage Summary:
+   510→- CSV export for orders with full filter support (status, branch, date range)
+   511→- Date range filtering on orders management page (default 30 days)
+   512→- Analytics dashboard now supports 5 period presets + custom date range
+   513→- Admin header shows today's orders count and revenue
+   514→- All changes pass ESLint with 0 errors
+   515→
+   516→---
+   517→Task ID: 6.4
+   518→Agent: reviews-system-builder
+   519→Task: Reviews & Ratings System
+   520→
+   521→Work Log:
+   522→- Added Review model to Prisma schema with relations to User, Brand, Product, Order
+   523→- Added reviews Review[] field to User, Brand, Product, and Order models
+   524→- Ran db:push to sync schema
+   525→- Created StarRating and StarRatingText UI components in src/components/ui/star-rating.tsx
+   526→- Created public API GET/POST /api/products/[id]/reviews for listing approved reviews and creating new ones
+   527→- Created admin API GET /api/admin/reviews for paginated listing with status/productId filters and pendingCount
+   528→- Created admin API PUT/DELETE /api/admin/reviews/[id] for approve/reject, admin reply, and deletion
+   529→- Built admin reviews page at src/app/admin/reviews/page.tsx with table, filters, approve/reject/reply/delete actions
+   530→- Updated admin sidebar with Reviews menu item, Star icon, and pending count badge (amber)
+   531→- Updated admin mobile sidebar with Reviews entry
+   532→- Added storefront product reviews section to menu-view (average rating, last 3 reviews, write review dialog)
+   533→- Added order item review button (star icon) to completed orders in orders-view
+   534→- Created review dialog with interactive star rating selector and comment textarea
+   535→- Added API.reviews helpers to store.ts (getByProduct, create)
+   536→- Added i18n translations for all review-related keys to uk, ru, en locale files
+   537→- Fixed pre-existing lint issue in menu-view (setState in effect)
+   538→- Fixed lint issue in orders-view (replaced effect-based reset with key-based remount)
+   539→- All changes pass ESLint with 0 errors
+   540→
+   541→Stage Summary:
+   542→- Full reviews & ratings system operational
+   543→- Customer can review products from completed orders (one per order per product)
+   544→- Admin can moderate reviews (approve/reject), reply, and delete
+   545→- Pending review count badge shown in admin sidebar
+   546→- Star rating component supports both interactive and read-only modes
+   547→- i18n support for Ukrainian, Russian, and English
+   548→
+   549→---
+   550→Task ID: 6.6
+   551→Agent: customer-features-agent
+   552→Task: Customer Features (Order Repeat, Favorites, Address Book)
+   553→
+   554→Work Log:
+   555→- Added i18n translations for favorites and addresses to uk.ts, ru.ts, en.ts
+   556→- Added FavoriteProduct model to Prisma schema with userId/productId unique constraint
+   557→- Added favoriteProducts relation to User, Brand, Product models
+   558→- Ran db:push to sync schema and regenerate Prisma client
+   559→- Created /api/favorites/route.ts with GET (list), POST (add), DELETE (remove) endpoints
+   560→- Created /api/me/addresses/route.ts with GET (list) and POST (create) endpoints
+   561→- Created /api/me/addresses/[id]/route.ts with PUT (update) and DELETE endpoints
+   562→- Updated store.ts API: addresses CRUD now uses /api/me/addresses, added favorites API methods
+   563→- Updated orders-view.tsx: Repeat button now shows for completed AND cancelled orders; handleRepeat navigates to menu view
+   564→- Updated page.tsx: passes onNavigate callback to OrdersView
+   565→- Updated menu-view.tsx: added Heart icon on each product card (filled red if favorited); added Favorites category tab with heart icon; optimistic favorite toggle; favorites view shows only favorited products
+   566→- Updated checkout-view.tsx: loads saved addresses; shows "Saved Addresses" section above address form; clickable address cards fill form; "Save this address" checkbox with label input
+   567→- Updated profile-view.tsx: added Favorites section with product grid and remove buttons; added Addresses section with list, edit/delete buttons, and add address dialog
+   568→- Lint passes cleanly, db:push confirms schema in sync
+   569→
+   570→Stage Summary:
+   571→- Order Repeat: completed/cancelled orders show Repeat button, navigates to menu on success
+   572→- Favorites: full CRUD via API, heart toggle on menu cards, favorites tab, profile section
+   573→- Address Book: saved addresses in checkout, address management in profile with dialog
+   574→- All new i18n keys added to 3 locale files
+   575→
