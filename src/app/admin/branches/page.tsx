@@ -2,7 +2,7 @@
 
 import { useState, useMemo, type FormEvent } from 'react';
 import { Pencil, Power, Trash2, Search } from 'lucide-react';
-import { useAdminApi, adminPost, adminPut, adminDelete } from '@/lib/admin-api';
+import { useAdminPaginatedApi, adminPost, adminPut, adminDelete } from '@/lib/admin-api';
 import type { Branch, BranchFormData } from '@/lib/admin-types';
 import { PageHeader } from '@/components/admin/page-header';
 import { ConfirmDialog } from '@/components/admin/confirm-dialog';
@@ -313,7 +313,7 @@ function BranchFormDialog({
 
 // ─── Main page ─────────────────────────────────────────────────
 export default function BranchesPage() {
-  const { data: branches, loading, refetch } = useAdminApi<Branch[]>('/api/admin/branches', []);
+  const { data: branches, loading, refetch } = useAdminPaginatedApi<Branch>('/api/admin/branches');
 
   // Search
   const [search, setSearch] = useState('');

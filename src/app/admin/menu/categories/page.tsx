@@ -16,7 +16,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/admin/page-header';
 import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { TableSkeleton } from '@/components/admin/admin-skeletons';
-import { useAdminApi, adminPost, adminPut, adminDelete } from '@/lib/admin-api';
+import { useAdminPaginatedApi, adminPost, adminPut, adminDelete } from '@/lib/admin-api';
 import type { Category, CategoryFormData } from '@/lib/admin-types';
 
 const emptyForm: CategoryFormData = {
@@ -29,9 +29,8 @@ const emptyForm: CategoryFormData = {
 };
 
 export default function CategoriesPage() {
-  const { data: categories, loading, refetch } = useAdminApi<Category[]>(
+  const { data: categories, loading, refetch } = useAdminPaginatedApi<Category>(
     '/api/admin/menu/categories',
-    [],
   );
 
   const [dialogOpen, setDialogOpen] = useState(false);

@@ -21,7 +21,7 @@ import { Pencil, Trash2, Plus, X, Search } from 'lucide-react';
 import { PageHeader } from '@/components/admin/page-header';
 import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { TableSkeleton } from '@/components/admin/admin-skeletons';
-import { useAdminApi, adminPost, adminPut, adminDelete } from '@/lib/admin-api';
+import { useAdminPaginatedApi, useAdminApi, adminPost, adminPut, adminDelete } from '@/lib/admin-api';
 import type { Product, Category, ProductFormData } from '@/lib/admin-types';
 
 // ─── Option groups helper types ───
@@ -43,13 +43,11 @@ const emptyForm: ProductFormData = {
 };
 
 export default function ProductsPage() {
-  const { data: products, loading, refetch } = useAdminApi<Product[]>(
+  const { data: products, loading, refetch } = useAdminPaginatedApi<Product>(
     '/api/admin/menu/products',
-    [],
   );
-  const { data: categories } = useAdminApi<Category[]>(
+  const { data: categories } = useAdminPaginatedApi<Category>(
     '/api/admin/menu/categories',
-    [],
   );
 
   // Filters

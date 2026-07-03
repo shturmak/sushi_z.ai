@@ -3,15 +3,14 @@ import { db } from '@/lib/db';
 import { apiSuccess, apiError } from '@/lib/api-response';
 import { requireAdmin } from '@/lib/auth-middleware';
 import { OrderStatus } from '@prisma/client';
+import { parsePagination, paginateResult } from '@/lib/pagination';
 
 export async function GET(request: NextRequest) {
   try {
     await requireAdmin();
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
-    const branchId = searchParams.get('branchId');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '25');
+    const { page, limit } = parsePagination(request.nextUrl.searchParams, { limit: 25 });
+    const status = request.nextUrl.searchParams.get('status');
+    const branchId = request.nextUrl.searchParams.get('branchId');
 
     const where: Record<string, unknown> = {};
     if (status && Object.values(OrderStatus).includes(status as OrderStatus)) where.status = status;
@@ -33,7 +32,7 @@ export async function GET(request: NextRequest) {
       db.order.count({ where }),
     ]);
 
-    return apiSuccess({ orders, total, page, limit, pages: Math.ceil(total / limit) });
+    return apiSuccess(paginateResult(orders, total, page, limit));
   } catch (error: unknown) {
     if (error && typeof error === 'object' && 'status' in error) return error as Response;
     console.error('Admin orders error:', error);

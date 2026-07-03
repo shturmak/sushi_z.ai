@@ -32,16 +32,16 @@
 | 3.1 | OpenAPI/Swagger (38 путей, 56 операций) | ✅ |
 | 3.2 | API гайд для мобильных | ✅ |
 
-## Этап 4 — Инфраструктура [🔄]
+## Этап 4 — Инфраструктура [✅]
 
 | # | Задача | Статус |
 |---|--------|--------|
 | 4.1 | PostgreSQL-ready схема + docs | ✅ |
-| 4.2 | Prisma Migrate (вместо db push) | ⏳ |
-| 4.3 | Доменная маршрутизация (subdomain → brand) | ⏳ |
-| 4.4 | LiqPay/Fondy платежи | ⏳ |
-| 4.5 | CI/CD (GitHub Actions) | ⏳ |
-| 4.6 | Pагинация API | ⏳ |
+| 4.2 | Prisma Migrate (вместо db push) | ✅ |
+| 4.3 | Доменная маршрутизация (subdomain → brand) | ✅ |
+| 4.4 | LiqPay платежи (real integration) | ✅ |
+| 4.5 | CI/CD (GitHub Actions) | ✅ |
+| 4.6 | Пагинация API (унифицированная) | ✅ |
 
 ## Этап 5 — Улучшения [⏳]
 

@@ -4,6 +4,33 @@
 
 ---
 
+## [0.5.0] — 2026-07-03
+
+### Добавлено
+- **Prisma Migrate**: начальная миграция `20260702235305_init` (327 строк SQL), переход с `db push` на `prisma migrate`
+- **Доменная маршрутизация**: `src/middleware.ts` — Edge-совместимый middleware для brand resolution
+  - Subdomain: `sushi-master.sushichain.ua` → `x-brand-slug: sushi-master`
+  - Path prefix: `/b/sushi-master/menu` → rewrite на `/menu` + header
+  - Query fallback: `?brand=sushi-master` (для разработки)
+- **LiqPay платежи**: реальная интеграция украинского платёжного шлюза
+  - `src/lib/payments/liqpay.ts` — SHA1 через Web Crypto, base64, checkout/callback
+  - `src/lib/payments/index.ts` — реестр провайдеров (extensible для Fondy/Stripe)
+  - Обновлён `POST /api/payments/intent` — генерация data + signature + checkoutUrl
+  - Обновлён `POST /api/payments/webhook/[provider]` — верификация подписи, auto-confirm заказа
+- **CI/CD**: `.github/workflows/ci.yml` — lint, type-check, build, migrate check, deploy staging
+- **Пагинация API**: унифицированная система
+  - `src/lib/pagination.ts` — `parsePagination()`, `paginateResult()`, `paginateCursorResult()`
+  - `useAdminPaginatedApi<T>()` — React hook с auto-unwrap `{ data, pagination }`
+  - Обновлены 8 endpoints: admin products, branches, categories, promotions, orders, loyalty transactions, customer orders
+  - Стандартизированный ответ: `{ data: T[], pagination: { page, limit, total, pages, hasNext, hasPrev } }`
+
+### Изменено
+- **package.json**: обновлены скрипты `db:migrate:reset`, `db:reset`, `db:migrate:pg`
+- **Админ-страницы**: переход с `useAdminApi<T[]>(path, [])` на `useAdminPaginatedApi<T>(path)`
+- **.env**: добавлены `PAYMENT_PROVIDER`, `LIQPAY_PUBLIC_KEY`, `LIQPAY_PRIVATE_KEY`, `LIQPAY_IS_TEST`
+
+---
+
 ## [0.4.0] — 2026-07-02
 
 ### Добавлено

@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { Eye } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { useAdminApi, adminPut } from '@/lib/admin-api';
+import { useAdminPaginatedApi, adminPut } from '@/lib/admin-api';
 import type { Order, OrderStatus } from '@/lib/admin-types';
 import { PageHeader } from '@/components/admin/page-header';
 import { OrderStatusBadge, PaymentMethodBadge } from '@/components/admin/status-badges';
@@ -34,24 +34,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-
-// ── Types ───────────────────────────────────────────────
-
-interface OrdersResponse {
-  orders: Order[];
-  total: number;
-  page: number;
-  limit: number;
-  pages: number;
-}
-
-const ORDERS_DEFAULT: OrdersResponse = {
-  orders: [],
-  total: 0,
-  page: 1,
-  limit: 25,
-  pages: 0,
-};
 
 // ── Constants ───────────────────────────────────────────
 
@@ -99,13 +81,12 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [statusChanging, setStatusChanging] = useState(false);
 
-  const { data, loading, refetch } = useAdminApi<OrdersResponse>(
+  const { data: orders, loading, refetch } = useAdminPaginatedApi<Order>(
     '/api/admin/orders',
-    ORDERS_DEFAULT,
   );
 
   // Client-side filtering
-  const filteredOrders = data.orders.filter((order) => {
+  const filteredOrders = orders.filter((order) => {
     if (statusFilter !== 'all' && order.status !== statusFilter) return false;
     if (branchFilter !== 'all' && order.branchId !== branchFilter) return false;
     return true;
@@ -121,7 +102,7 @@ export default function OrdersPage() {
       await refetch();
       // Update the selected order if it's the same one
       if (selectedOrder?.id === orderId) {
-        const updated = data.orders.find((o) => o.id === orderId);
+        const updated = orders.find((o) => o.id === orderId);
         if (updated) setSelectedOrder(updated);
       }
     } catch {

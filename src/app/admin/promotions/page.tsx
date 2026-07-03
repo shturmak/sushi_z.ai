@@ -5,7 +5,7 @@ import { format, parseISO } from 'date-fns';
 import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { useAdminApi, adminPost, adminPut, adminDelete } from '@/lib/admin-api';
+import { useAdminPaginatedApi, adminPost, adminPut, adminDelete } from '@/lib/admin-api';
 import type { Promotion, PromotionFormData, PromotionType, PromotionStatus } from '@/lib/admin-types';
 import { PageHeader } from '@/components/admin/page-header';
 import { ConfirmDialog } from '@/components/admin/confirm-dialog';
@@ -118,7 +118,7 @@ const promotionStatuses: { value: PromotionStatus; label: string }[] = [
 // ── Page Component ───────────────────────────────────────
 
 export default function PromotionsPage() {
-  const { data: promotions, loading, refetch } = useAdminApi<Promotion[]>('/api/admin/promotions', []);
+  const { data: promotions, loading, refetch } = useAdminPaginatedApi<Promotion>('/api/admin/promotions');
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);

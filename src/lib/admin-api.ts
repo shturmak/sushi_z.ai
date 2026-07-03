@@ -100,6 +100,50 @@ export function useAdminApi<T>(path: string, defaultValue: T): ApiResult<T> {
   return { data: data ?? defaultValue, loading, error, refetch };
 }
 
+// ── Paginated hook (auto-unwraps { data, pagination } envelope) ────────
+
+type PaginatedApiResult<T> = {
+  data: T[];
+  pagination: { page: number; limit: number; total: number; pages: number; hasNext: boolean; hasPrev: boolean };
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+};
+
+export function useAdminPaginatedApi<T>(path: string): PaginatedApiResult<T> {
+  const [data, setData] = useState<T[]>([]);
+  const [pagination, setPagination] = useState<PaginatedApiResult<T>['pagination']>({ page: 1, limit: 50, total: 0, pages: 0, hasNext: false, hasPrev: false });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const isAuthenticated = useAdminAuth((s) => s.isAuthenticated);
+  const initDone = useAdminAuth((s) => !s.loading);
+  const brandId = useBrandStore((s) => s.currentBrandId);
+
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await fetchApi<{ data: T[]; pagination: PaginatedApiResult<T>['pagination'] }>(path);
+      setData(result.data);
+      setPagination(result.pagination);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      setError(msg);
+      if (isAuthenticated) toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  }, [path, isAuthenticated]);
+
+  useEffect(() => {
+    if (!initDone) return;
+    if (path.includes('/admin/brands') && isAuthenticated) { refetch(); return; }
+    if (brandId && isAuthenticated) { refetch(); }
+  }, [refetch, initDone, isAuthenticated, brandId, path]);
+
+  return { data, pagination, loading, error, refetch };
+}
+
 // ── Mutation helpers ───────────────────────────────────────────────
 
 export async function adminPost<TReq, TRes = unknown>(path: string, body: TReq): Promise<TRes> {

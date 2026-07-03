@@ -2,15 +2,31 @@ import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { apiSuccess, apiError } from '@/lib/api-response';
 import { requireAdmin } from '@/lib/auth-middleware';
+import { parsePagination, paginateResult } from '@/lib/pagination';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await requireAdmin();
-    const products = await db.product.findMany({
-      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-      include: { category: { select: { name: true } }, branch: { select: { name: true } }, optionGroups: { include: { options: true } } },
-    });
-    return apiSuccess(products);
+    const { page, limit } = parsePagination(request.nextUrl.searchParams, { limit: 50 });
+    const search = request.nextUrl.searchParams.get('search');
+    const categoryId = request.nextUrl.searchParams.get('categoryId');
+
+    const where: Record<string, unknown> = {};
+    if (search) where.name = { contains: search };
+    if (categoryId) where.categoryId = categoryId;
+
+    const [products, total] = await Promise.all([
+      db.product.findMany({
+        where,
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+        include: { category: { select: { name: true } }, branch: { select: { name: true } }, optionGroups: { include: { options: true } } },
+      }),
+      db.product.count({ where }),
+    ]);
+
+    return apiSuccess(paginateResult(products, total, page, limit));
   } catch (error: unknown) {
     if (error && typeof error === 'object' && 'status' in error) return error as Response;
     return apiError('INTERNAL_ERROR', 'Failed', 500);

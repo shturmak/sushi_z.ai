@@ -145,3 +145,119 @@ Stage Summary:
 - docs/openapi.yaml: 1200+ line OpenAPI 3.0.3 spec covering all 40 route files
 - docs/API.md: concise mobile developer guide with auth flow, error codes, workflows, code gen examples
 - Spec is Swagger UI compatible and code-generator ready (typescript-axios, kotlin, swift5, dart)
+
+---
+Task ID: 4.3
+Agent: Domain Routing Agent
+Task: Create Next.js middleware for domain-based brand routing
+
+Work Log:
+- Read and analyzed existing tenant-middleware.ts, tenant.ts types, app/page.tsx storefront, prisma/schema.prisma
+- Confirmed resolveBrand() already reads x-brand-slug header (line 16 of tenant-middleware.ts) — no changes needed
+- Created src/middleware.ts as Edge-compatible Next.js middleware with:
+  - Brand slug extraction in priority order: subdomain > /b/<slug>/ path prefix > ?brand= query param
+  - Subdomain extraction strips port, validates against BRAND_DOMAIN (default: sushichain.ua), skips reserved subdomains (www, api, admin)
+  - Path prefix /b/<slug>/... rewrites URL to remove the prefix (e.g., /b/sushi-master/menu → /menu)
+  - Query param ?brand=slug with basic slug validation as dev fallback
+  - Sets x-brand-slug header on all matched requests where brand is identified
+  - Matcher config excludes: /_next/*, /api/*, /admin/*, static files (favicon, robots, sitemap), public asset dirs (images/, icons/, assets/)
+  - No Node.js APIs used — fully Edge Runtime compatible
+- Verified: zero type errors in middleware.ts, zero lint warnings
+- Integration verified: tenant-middleware.ts resolveBrand() picks up x-brand-slug header via headers().get('x-brand-slug')
+
+Stage Summary:
+- src/middleware.ts: ~110 lines, Edge-compatible domain-based brand routing
+- Three brand resolution strategies: subdomain (production), /b/<slug>/ path prefix, ?brand= query param (dev)
+- x-brand-slug header set for downstream consumption by resolveBrand()
+- No changes needed to tenant-middleware.ts — header-based integration already in place
+
+---
+Task ID: 4.4
+Agent: Payment Integration Agent
+Task: Implement real LiqPay payment integration for Ukrainian market
+
+Work Log:
+- Read existing payment intent route (fake URL), webhook route (no signature verification), api-response, auth-middleware, Prisma schema (PaymentStatus enum, Payment model)
+- Created `src/lib/payments/liqpay.ts` — self-contained LiqPay provider module:
+  - Types: LiqPayCheckoutParams, LiqPayCheckoutResult, LiqPayCallbackData, MappedPaymentStatus
+  - SHA1 via Web Crypto API (globalThis.crypto.subtle.digest) — works in Edge and Node.js runtimes
+  - Base64 encode/decode with Buffer fallback for Edge
+  - `createCheckout()`: builds LiqPay v3 JSON payload (action=pay, currency=UAH), base64-encodes it, generates SHA1(private_key + data + private_key) signature
+  - `verifyCallback()`: recomputes SHA1 signature, decodes base64 JSON payload, validates
+  - `mapStatus()`: maps LiqPay statuses (success/failure/wait/reversed/error/subscriber/codeverif) to internal PaymentStatus enum
+  - Server callback URL derived from LIQPAY_SERVER_URL env or NEXT_PUBLIC_APP_URL with fallback
+- Created `src/lib/payments/index.ts` — extensible payment provider registry:
+  - PaymentProvider interface with createCheckout() and verifyCallback()
+  - LiqPay registered as default provider; extensible for Fondy/Stripe/Portmone
+  - `getProvider(name)` and `getProviderNames()` accessors
+  - Shared CheckoutParams, CheckoutResult, CallbackResult types
+- Rewrote `src/app/api/payments/intent/route.ts`:
+  - Resolves provider via registry (PAYMENT_PROVIDER env, defaults to "liqpay")
+  - Generates real checkout with base64 data + signature + checkoutUrl
+  - Returns { paymentId, amount, provider, data, signature, checkoutUrl }
+  - Derives resultUrl from request origin for redirect-after-payment
+- Rewrote `src/app/api/payments/webhook/[provider]/route.ts`:
+  - Parses form-encoded body (LiqPay default) and JSON fallback
+  - Registered providers: full signature verification via provider.verifyCallback()
+  - Unknown providers: legacy fallback (original raw providerTxId/status behavior preserved)
+  - Signature invalid → returns 400 INVALID_SIGNATURE
+  - Valid callback: updates Payment status + providerTxId + providerPayload
+  - Auto-confirms order (status → confirmed, confirmedAt) on succeeded payment
+  - All errors caught — returns 200 to prevent LiqPay retry storms
+- Updated `.env` with LIQPAY_PUBLIC_KEY, LIQPAY_PRIVATE_KEY, LIQPAY_IS_TEST, PAYMENT_PROVIDER, and commented LIQPAY_SERVER_URL
+
+Stage Summary:
+- `src/lib/payments/liqpay.ts`: ~190 lines — LiqPay v3 integration with SHA1/WebCrypto
+- `src/lib/payments/index.ts`: ~100 lines — provider registry pattern, ready for additional providers
+- Intent route: returns real LiqPay checkout (data + signature + checkoutUrl) instead of fake URL
+- Webhook route: full signature verification, form-encoded body parsing, auto-order-confirmation, legacy fallback
+- `.env`: LiqPay sandbox credentials added (replace with real keys for production)
+- Frontend integration note: POST form to checkoutUrl with `data` and `signature` fields, or use redirect with query params
+
+---
+Task ID: 4.2
+Agent: Main Architect
+Task: Switch from prisma db push to prisma migrate
+
+Work Log:
+- Ran `prisma migrate reset --force` to clear existing DB
+- Ran `prisma migrate dev --name init` to create baseline migration
+- Migration file: `prisma/migrations/20260702235305_init/migration.sql` (327 lines)
+- Ran `bun run prisma/seed.ts` to repopulate database
+- Updated package.json scripts: `db:migrate:reset`, `db:reset`, `db:migrate:pg`
+
+Stage Summary:
+- Full migration history established — ready for safe schema evolution
+- DB re-seeded with 3 brands, 5 branches, 30 products, 4 promotions
+
+---
+Task ID: 4.5
+Agent: Main Architect
+Task: Create CI/CD pipeline with GitHub Actions
+
+Work Log:
+- Created `.github/workflows/ci.yml` with 4 jobs:
+  1. lint-and-typecheck: ESLint + Prisma generate
+  2. build: Next.js production build (depends on lint)
+  3. db-migrate-check: Prisma migrate status check
+  4. deploy-staging: placeholder deploy step (main branch only)
+- Triggers: push to main/develop, PRs to main
+
+Stage Summary:
+- CI pipeline ready for GitHub Actions
+
+---
+Task ID: 4.6
+Agent: Main Architect
+Task: Add unified pagination to all list API endpoints
+
+Work Log:
+- Created `src/lib/pagination.ts` with: parsePagination(), paginateResult(), paginateCursorResult(), paginatedFindMany()
+- Updated 8 API routes: admin/products, admin/branches, admin/promotions, admin/menu/categories, admin/orders, customer/orders, loyalty/transactions
+- Added `useAdminPaginatedApi<T>()` hook to admin-api.ts with auto-unwrap of { data, pagination }
+- Updated 5 admin pages: branches, products, categories, promotions, orders
+- Standardized response: { data: T[], pagination: { page, limit, total, pages, hasNext, hasPrev } }
+
+Stage Summary:
+- All list endpoints return consistent paginated response
+- Admin frontend uses useAdminPaginatedApi for auto-unwrap

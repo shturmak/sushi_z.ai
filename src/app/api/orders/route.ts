@@ -3,14 +3,13 @@ import { db } from '@/lib/db';
 import { apiSuccess, apiError } from '@/lib/api-response';
 import { requireAuth } from '@/lib/auth-middleware';
 import { createOrderFromCart } from '@/domain/order.service';
+import { parsePagination, paginateResult } from '@/lib/pagination';
 
 export async function GET(request: NextRequest) {
   try {
     const authUser = await requireAuth();
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const { page, limit } = parsePagination(request.nextUrl.searchParams, { limit: 20 });
+    const status = request.nextUrl.searchParams.get('status');
 
     const where: Record<string, unknown> = { userId: authUser.userId };
     if (status) where.status = status;
@@ -30,7 +29,7 @@ export async function GET(request: NextRequest) {
       db.order.count({ where }),
     ]);
 
-    return apiSuccess({ orders, total, page, limit, pages: Math.ceil(total / limit) });
+    return apiSuccess(paginateResult(orders, total, page, limit));
   } catch (error: unknown) {
     if (error && typeof error === 'object' && 'status' in error) return error as Response;
     console.error('List orders error:', error);
