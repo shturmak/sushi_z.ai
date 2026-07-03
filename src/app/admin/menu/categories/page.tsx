@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Upload, X } from 'lucide-react';
 import { PageHeader } from '@/components/admin/page-header';
 import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { TableSkeleton } from '@/components/admin/admin-skeletons';
@@ -25,6 +25,7 @@ const emptyForm: CategoryFormData = {
   name: '',
   slug: '',
   description: '',
+  imageUrl: '',
   sortOrder: 0,
   isActive: true,
 };
@@ -39,6 +40,9 @@ export default function CategoriesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CategoryFormData>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const [uploading, setUploading] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -53,9 +57,11 @@ export default function CategoriesPage() {
           name: cat.name,
           slug: cat.slug,
           description: cat.description || '',
+          imageUrl: cat.imageUrl || '',
           sortOrder: cat.sortOrder,
           isActive: cat.isActive,
         });
+        setImagePreview(cat.imageUrl || '');
       }
     } else {
       setForm(emptyForm);
@@ -65,6 +71,8 @@ export default function CategoriesPage() {
   function openCreate() {
     setEditingId(null);
     setForm(emptyForm);
+    setPendingImageFile(null);
+    setImagePreview('');
     setDialogOpen(true);
   }
 
@@ -73,22 +81,62 @@ export default function CategoriesPage() {
     setDialogOpen(true);
   }
 
+  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPendingImageFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  function handleRemoveImage() {
+    setPendingImageFile(null);
+    setImagePreview('');
+    setForm(f => ({ ...f, imageUrl: '' }));
+  }
+
+  async function uploadImage(file: File): Promise<string | null> {
+    const { useAdminAuth } = await import('@/lib/admin-api');
+    const token = useAdminAuth.getState().token;
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/admin/upload', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.error?.message || 'Upload failed');
+    return json.data.url;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     try {
+      let imageUrl = form.imageUrl;
+      if (pendingImageFile) {
+        setUploading(true);
+        const url = await uploadImage(pendingImageFile);
+        imageUrl = url || '';
+        setUploading(false);
+      }
+      const body = { ...form, imageUrl };
       if (editingId) {
-        await adminPut(`/api/admin/menu/categories/${editingId}`, form);
+        await adminPut(`/api/admin/menu/categories/${editingId}`, body);
       } else {
-        await adminPost('/api/admin/menu/categories', form);
+        await adminPost('/api/admin/menu/categories', body);
       }
       setDialogOpen(false);
       setEditingId(null);
+      setPendingImageFile(null);
       refetch();
     } catch {
       // error toast handled by admin-api
     } finally {
       setSubmitting(false);
+      setUploading(false);
     }
   }
 
@@ -216,6 +264,54 @@ export default function CategoriesPage() {
                 rows={3}
               />
             </div>
+
+            {/* ─── Image Upload ─── */}
+            <div className="space-y-2">
+              <Label>{t('admin.categories.image')}</Label>
+              {imagePreview ? (
+                <div className="relative inline-block">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="h-24 w-24 rounded-lg object-cover border"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -right-2 h-6 w-6"
+                    onClick={handleRemoveImage}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div>
+                  <input
+                    id="cat-image"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={handleImageSelect}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById('cat-image')?.click()}
+                    disabled={uploading}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {uploading ? t('common.loading') : t('admin.categories.uploadImage')}
+                  </Button>
+                </div>
+              )}
+              {!imagePreview && !pendingImageFile && (
+                <p className="text-xs text-muted-foreground">
+                  JPG, PNG, WebP, GIF — max 5MB
+                </p>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="cat-sort">—</Label>
               <Input

@@ -5,9 +5,17 @@ import { useBrand, useAuth, API } from '@/lib/store'
 import { useT } from '@/i18n'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import {
   User,
   Mail,
@@ -17,6 +25,11 @@ import {
   Trophy,
   Clock,
   Loader2,
+  Heart,
+  MapPin,
+  Plus,
+  Pencil,
+  Trash2,
 } from 'lucide-react'
 
 // ── Types ────────────────────────────────────────────────
@@ -34,6 +47,29 @@ interface LoyaltyTransaction {
   balanceAfter: number
   description: string | null
   createdAt: string
+}
+
+interface FavoriteItem {
+  id: string
+  productId: string
+  product: {
+    id: string
+    name: string
+    price: number
+    weight: string | null
+    imageUrl: string | null
+  }
+}
+
+interface UserAddress {
+  id: string
+  label: string | null
+  street: string
+  building: string | null
+  apartment: string | null
+  floor: string | null
+  entrance: string | null
+  comment: string | null
 }
 
 // ── Component ────────────────────────────────────────────
@@ -73,16 +109,36 @@ export default function ProfileView() {
   const [transactions, setTransactions] = useState<LoyaltyTransaction[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Favorites
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([])
+
+  // Addresses
+  const [addresses, setAddresses] = useState<UserAddress[]>([])
+  const [addressDialogOpen, setAddressDialogOpen] = useState(false)
+  const [editingAddress, setEditingAddress] = useState<UserAddress | null>(null)
+  const [addrForm, setAddrForm] = useState({ label: '', street: '', building: '', apartment: '', floor: '', entrance: '', comment: '' })
+
   useEffect(() => {
     let cancelled = false
-    Promise.all([API.loyalty.get(), API.loyalty.transactions()]).then(
-      ([loyaltyRes, txRes]) => {
+    Promise.all([
+      API.loyalty.get(),
+      API.loyalty.transactions(),
+      API.favorites.list(),
+      API.addresses.list(),
+    ]).then(
+      ([loyaltyRes, txRes, favRes, addrRes]) => {
         if (cancelled) return
         if (loyaltyRes.data) {
           setLoyalty(loyaltyRes.data as LoyaltyData)
         }
         if (txRes.data && Array.isArray(txRes.data)) {
           setTransactions(txRes.data as LoyaltyTransaction[])
+        }
+        if (favRes.data && Array.isArray(favRes.data)) {
+          setFavorites(favRes.data as FavoriteItem[])
+        }
+        if (addrRes.data && Array.isArray(addrRes.data)) {
+          setAddresses(addrRes.data as UserAddress[])
         }
         setLoading(false)
       }
@@ -102,6 +158,60 @@ export default function ProfileView() {
     } catch {
       return dateStr
     }
+  }
+
+  // ── Remove favorite ────────────────────────────────
+  async function handleRemoveFavorite(productId: string) {
+    setFavorites((prev) => prev.filter((f) => f.productId !== productId))
+    await API.favorites.remove(productId)
+  }
+
+  // ── Address dialog ─────────────────────────────────
+  function openAddressDialog(addr?: UserAddress) {
+    if (addr) {
+      setEditingAddress(addr)
+      setAddrForm({
+        label: addr.label || '',
+        street: addr.street || '',
+        building: addr.building || '',
+        apartment: addr.apartment || '',
+        floor: addr.floor || '',
+        entrance: addr.entrance || '',
+        comment: addr.comment || '',
+      })
+    } else {
+      setEditingAddress(null)
+      setAddrForm({ label: '', street: '', building: '', apartment: '', floor: '', entrance: '', comment: '' })
+    }
+    setAddressDialogOpen(true)
+  }
+
+  async function handleSaveAddress() {
+    const payload: Record<string, string> = {}
+    if (addrForm.label) payload.label = addrForm.label
+    payload.street = addrForm.street
+    if (addrForm.building) payload.building = addrForm.building
+    if (addrForm.apartment) payload.apartment = addrForm.apartment
+    if (addrForm.floor) payload.floor = addrForm.floor
+    if (addrForm.entrance) payload.entrance = addrForm.entrance
+    if (addrForm.comment) payload.comment = addrForm.comment
+
+    if (editingAddress) {
+      await API.addresses.update(editingAddress.id, payload)
+    } else {
+      await API.addresses.create(payload)
+    }
+
+    const { data } = await API.addresses.list()
+    if (data && Array.isArray(data)) setAddresses(data as UserAddress[])
+
+    setAddressDialogOpen(false)
+    setEditingAddress(null)
+  }
+
+  async function handleDeleteAddress(id: string) {
+    await API.addresses.delete(id)
+    setAddresses((prev) => prev.filter((a) => a.id !== id))
   }
 
   const tierInfo = TIER_CONFIG[loyalty?.tier || 'bronze'] || TIER_CONFIG.bronze
@@ -152,6 +262,107 @@ export default function ProfileView() {
               )}
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Favorites section */}
+      <Card className="mb-6">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Heart className="size-4 text-red-500" />
+            {t('favorites.title')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {favorites.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('favorites.empty')}</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {favorites.map((fav) => (
+                <div key={fav.id} className="group relative rounded-lg border p-3">
+                  <button
+                    onClick={() => handleRemoveFavorite(fav.productId)}
+                    className="absolute top-1.5 right-1.5 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
+                  >
+                    <Trash2 className="size-3 text-muted-foreground" />
+                  </button>
+                  {fav.product.imageUrl ? (
+                    <img src={fav.product.imageUrl} alt="" className="h-16 w-full object-cover rounded mb-2" />
+                  ) : (
+                    <div className="h-16 w-full rounded mb-2 flex items-center justify-center text-2xl" style={{ backgroundColor: primaryColor + '20' }}>
+                      🍣
+                    </div>
+                  )}
+                  <p className="text-sm font-medium line-clamp-1">{fav.product.name}</p>
+                  <p className="text-sm font-bold" style={{ color: primaryColor }}>
+                    {Math.round(fav.product.price)} ₴
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Addresses section */}
+      <Card className="mb-6">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <MapPin className="size-4" style={{ color: primaryColor }} />
+              {t('addresses.title')}
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1 h-7 text-xs"
+              onClick={() => openAddressDialog()}
+            >
+              <Plus className="size-3" />
+              {t('addresses.add')}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {addresses.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('addresses.empty')}</p>
+          ) : (
+            <div className="space-y-2">
+              {addresses.map((addr) => (
+                <div key={addr.id} className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <MapPin className="size-4 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      {addr.label && (
+                        <p className="text-sm font-medium">{addr.label}</p>
+                      )}
+                      <p className="text-sm text-muted-foreground truncate">
+                        {[addr.street, addr.building, addr.apartment].filter(Boolean).join(', ')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7"
+                      onClick={() => openAddressDialog(addr)}
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 text-destructive hover:text-destructive"
+                      onClick={() => handleDeleteAddress(addr.id)}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -271,6 +482,82 @@ export default function ProfileView() {
           {t('header.logout')}
         </Button>
       </div>
+
+      {/* Address Dialog */}
+      <Dialog open={addressDialogOpen} onOpenChange={setAddressDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{editingAddress ? t('addresses.edit') : t('addresses.add')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-sm font-medium">{t('addresses.label')}</label>
+              <Input
+                placeholder={t('addresses.labelPlaceholder')}
+                value={addrForm.label}
+                onChange={(e) => setAddrForm((f) => ({ ...f, label: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">{t('checkout.street')} *</label>
+              <Input
+                value={addrForm.street}
+                onChange={(e) => setAddrForm((f) => ({ ...f, street: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-sm font-medium">{t('checkout.building')}</label>
+                <Input
+                  value={addrForm.building}
+                  onChange={(e) => setAddrForm((f) => ({ ...f, building: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">{t('checkout.apartment')}</label>
+                <Input
+                  value={addrForm.apartment}
+                  onChange={(e) => setAddrForm((f) => ({ ...f, apartment: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-sm font-medium">{t('checkout.floor')}</label>
+                <Input
+                  value={addrForm.floor}
+                  onChange={(e) => setAddrForm((f) => ({ ...f, floor: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">{t('checkout.entrance')}</label>
+                <Input
+                  value={addrForm.entrance}
+                  onChange={(e) => setAddrForm((f) => ({ ...f, entrance: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">{t('checkout.comment')}</label>
+              <Input
+                value={addrForm.comment}
+                onChange={(e) => setAddrForm((f) => ({ ...f, comment: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddressDialogOpen(false)}>{t('common.cancel')}</Button>
+            <Button
+              onClick={handleSaveAddress}
+              disabled={!addrForm.street.trim()}
+              style={{ backgroundColor: primaryColor }}
+              className="text-white"
+            >
+              {t('common.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

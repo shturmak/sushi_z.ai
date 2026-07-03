@@ -21,9 +21,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     await requireAdmin();
     const { id } = await params;
     const body = await request.json();
-    const { name, description, price, weight, calories, isAvailable, sortOrder, optionGroups } = body;
+    const { name, description, imageUrl, price, weight, calories, isAvailable, sortOrder, optionGroups } = body;
 
-    await db.product.update({ where: { id }, data: { name, description, price, weight, calories, isAvailable, sortOrder } });
+    await db.product.update({ where: { id }, data: { name, description, imageUrl: imageUrl || null, price, weight, calories, isAvailable, sortOrder } });
 
     // Rebuild option groups if provided
     if (optionGroups) {

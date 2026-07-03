@@ -35,11 +35,11 @@ export async function POST(request: Request) {
   try {
     await requireAdmin();
     const body = await request.json();
-    const { branchId, name, slug, description, sortOrder } = body;
+    const { branchId, name, slug, description, imageUrl, sortOrder } = body;
     if (!name || !slug) return apiError('VALIDATION_ERROR', 'name and slug required');
 
     const category = await db.category.create({
-      data: { branchId: branchId || null, name, slug, description, sortOrder: sortOrder ?? 0 },
+      data: { branchId: branchId || null, name, slug, description, imageUrl: imageUrl || null, sortOrder: sortOrder ?? 0 },
     });
     return apiSuccess(category, 'Category created', 201);
   } catch (error: unknown) {

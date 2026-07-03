@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   try {
     await requireAdmin();
     const body = await request.json();
-    const { categoryId, branchId, name, slug, description, price, weight, calories, isAvailable, sortOrder, optionGroups } = body;
+    const { categoryId, branchId, name, slug, description, imageUrl, price, weight, calories, isAvailable, sortOrder, optionGroups } = body;
 
     if (!categoryId || !name || !slug || price == null)
       return apiError('VALIDATION_ERROR', 'categoryId, name, slug, price required');
@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
     const product = await db.product.create({
       data: {
         categoryId, branchId: branchId || null, name, slug, description,
+        imageUrl: imageUrl || null,
         price, weight, calories, isAvailable: isAvailable ?? true, sortOrder: sortOrder ?? 0,
       },
     });

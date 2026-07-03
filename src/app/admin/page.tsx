@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import { ShoppingCart, DollarSign, Receipt, CalendarDays, TrendingUp, TrendingDown } from 'lucide-react';
 import {
   Card,
@@ -9,6 +10,8 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -35,10 +38,13 @@ import {
 } from 'recharts';
 import { useT } from '@/i18n';
 
+// ── Period type ────────────────────────────────────────────────────────
+type PeriodKey = 'today' | '7d' | '30d' | 'month' | 'custom';
+
 // ── Default analytics (all zeros / empty arrays) ──────────────────────
 const defaultAnalytics: Analytics = {
-  orders: { today: 0, week: 0, month: 0 },
-  revenue: { today: 0, week: 0, month: 0 },
+  orders: { today: 0, week: 0, month: 0, range: 0 },
+  revenue: { today: 0, week: 0, month: 0, range: 0 },
   statusDistribution: [],
   topProducts: [],
   recentOrders: [],
@@ -142,15 +148,48 @@ function ChartTooltipContent({ active, payload, label, isRevenue = false }: {
 // ── Page component ────────────────────────────────────────────────────
 export default function AdminAnalyticsPage() {
   const t = useT();
-  const { data, loading } = useAdminApi<Analytics>('/api/admin/analytics', defaultAnalytics);
+
+  const [period, setPeriod] = useState<PeriodKey>('7d');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+
+  // Build API path with period params
+  const apiPath = useMemo(() => {
+    if (period === 'custom' && (customFrom || customTo)) {
+      const params = new URLSearchParams();
+      if (customFrom) params.set('dateFrom', customFrom);
+      if (customTo) params.set('dateTo', customTo);
+      return `/api/admin/analytics?${params.toString()}`;
+    }
+    if (period !== 'custom') {
+      return `/api/admin/analytics?period=${period}`;
+    }
+    return '/api/admin/analytics?period=7d';
+  }, [period, customFrom, customTo]);
+
+  const { data, loading } = useAdminApi<Analytics>(apiPath, defaultAnalytics);
 
   const orderTypeLabel: Record<OrderType, string> = {
     delivery: t('checkout.delivery'),
     pickup: t('checkout.pickup'),
   };
 
-  const avgCheck = data.orders.today > 0 ? Math.round(data.revenue.today / data.orders.today) : 0;
+  // Pick the right bucket for the selected period
+  const periodOrders = data.orders.range ?? (period === 'today' ? data.orders.today : period === 'month' ? data.orders.month : data.orders.week);
+  const periodRevenue = data.revenue.range ?? (period === 'today' ? data.revenue.today : period === 'month' ? data.revenue.month : data.revenue.week);
+
+  const avgCheck = periodOrders > 0 ? Math.round(periodRevenue / periodOrders) : 0;
   const recentOrders = data.recentOrders.slice(0, 5);
+
+  const periodLabel = useMemo(() => {
+    switch (period) {
+      case 'today': return t('admin.ordersAdmin.today');
+      case '7d': return t('admin.ordersAdmin.last7days');
+      case '30d': return t('admin.ordersAdmin.last30days');
+      case 'month': return t('admin.ordersAdmin.thisMonth');
+      case 'custom': return t('admin.ordersAdmin.customRange');
+    }
+  }, [period, t]);
 
   // ── Loading state ───────────────────────────────────────────────────
   if (loading) {
@@ -198,24 +237,71 @@ export default function AdminAnalyticsPage() {
     'hsl(var(--chart-1) / 0.5)',
   ];
 
+  const periodButtons: { key: PeriodKey; label: string }[] = [
+    { key: 'today', label: t('admin.ordersAdmin.today') },
+    { key: '7d', label: t('admin.ordersAdmin.last7days') },
+    { key: '30d', label: t('admin.ordersAdmin.last30days') },
+    { key: 'month', label: t('admin.ordersAdmin.thisMonth') },
+    { key: 'custom', label: t('admin.ordersAdmin.customRange') },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Page heading */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{t('admin.analytics.title')}</h1>
+      {/* Page heading with period selector */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {t('admin.analytics.title')}
+            <span className="text-muted-foreground text-base font-normal ml-2">
+              — {periodLabel}
+            </span>
+          </h1>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {periodButtons.map((btn) => (
+            <Button
+              key={btn.key}
+              variant={period === btn.key ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setPeriod(btn.key)}
+            >
+              {btn.label}
+            </Button>
+          ))}
+        </div>
       </div>
+
+      {/* Custom date range inputs */}
+      {period === 'custom' && (
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="text-sm text-muted-foreground">{t('admin.ordersAdmin.dateFrom')}</label>
+          <Input
+            type="date"
+            value={customFrom}
+            onChange={(e) => setCustomFrom(e.target.value)}
+            className="w-[160px]"
+          />
+          <label className="text-sm text-muted-foreground">{t('admin.ordersAdmin.dateTo')}</label>
+          <Input
+            type="date"
+            value={customTo}
+            onChange={(e) => setCustomTo(e.target.value)}
+            className="w-[160px]"
+          />
+        </div>
+      )}
 
       {/* Metric cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           label={t('admin.analytics.totalOrders')}
-          value={String(data.orders.today)}
+          value={String(periodOrders)}
           icon={<ShoppingCart className="h-5 w-5" />}
           trend={{ value: '+12.5%', up: true }}
         />
         <MetricCard
           label={t('admin.analytics.revenue')}
-          value={formatUAH(data.revenue.today)}
+          value={formatUAH(periodRevenue)}
           icon={<DollarSign className="h-5 w-5" />}
           trend={{ value: '+8.3%', up: true }}
         />

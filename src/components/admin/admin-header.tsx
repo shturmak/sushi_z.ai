@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { Moon, Sun, Menu, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,9 +14,32 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { AdminMobileSidebar } from './admin-mobile-sidebar';
+import { useAdminAuth } from '@/lib/admin-auth';
 
 export function AdminHeader() {
   const { theme, setTheme } = useTheme();
+  const [quickStats, setQuickStats] = useState<{ orders: number; revenue: number } | null>(null);
+  const token = useAdminAuth((s) => s.token);
+  const isAuthenticated = useAdminAuth((s) => s.isAuthenticated);
+
+  useEffect(() => {
+    if (!isAuthenticated || !token) return;
+    fetch('/api/admin/analytics?period=today', {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.data) {
+          setQuickStats({
+            orders: json.data.orders.today ?? 0,
+            revenue: json.data.revenue.today ?? 0,
+          });
+        }
+      })
+      .catch(() => {
+        // Ignore — quick stats are non-critical
+      });
+  }, [isAuthenticated, token]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
@@ -33,6 +57,17 @@ export function AdminHeader() {
             <AdminMobileSidebar />
           </SheetContent>
         </Sheet>
+
+        {/* Quick stats */}
+        {quickStats && (
+          <div className="hidden md:flex items-center text-xs text-muted-foreground">
+            <span>
+              {quickStats.orders} {quickStats.orders === 1 ? 'замовлення' : 'замовлень'}
+              {', '}
+              {quickStats.revenue.toLocaleString('uk-UA')} ₴
+            </span>
+          </div>
+        )}
 
         <div className="flex-1" />
 

@@ -110,6 +110,30 @@ const en: Messages = {
     branch: 'Branch:',
     payment: 'Payment:',
     confirmOrder: 'Place order',
+    deliveryZones: {
+      selectZone: 'Select delivery zone',
+      deliveryTime: '~{min} min, {fee} ₴',
+      freeDelivery: 'Free delivery',
+    },
+  },
+
+  favorites: {
+    title: 'Favorites',
+    added: 'Added to favorites',
+    removed: 'Removed from favorites',
+    empty: 'No favorite products',
+  },
+
+  addresses: {
+    title: 'My Addresses',
+    add: 'Add Address',
+    edit: 'Edit',
+    delete: 'Delete',
+    saveAddress: 'Save address',
+    savedAddresses: 'Saved addresses',
+    empty: 'No saved addresses',
+    label: 'Label',
+    labelPlaceholder: 'Home, Work...',
   },
 
   orders: {
@@ -118,6 +142,7 @@ const en: Messages = {
     emptyHint: 'Place your first order from the menu',
     repeat: 'Repeat',
     cancelOrder: 'Cancel',
+    repeatSuccess: 'Items added to cart',
     timeline: 'Timeline:',
     statuses: {
       new: 'New',
@@ -168,15 +193,18 @@ const en: Messages = {
     sidebar: {
       analytics: 'Analytics',
       branches: 'Branches',
+      deliveryZones: 'Delivery Zones',
       menu: 'Menu',
       categories: 'Categories',
       products: 'Products',
       orders: 'Orders',
       promotions: 'Promotions',
+      reviews: 'Reviews',
     },
 
     analytics: {
       title: 'Analytics',
+      period: 'Period',
       totalOrders: 'Total orders',
       revenue: 'Revenue',
       avgCheck: 'Average check',
@@ -211,6 +239,9 @@ const en: Messages = {
       name: 'Name',
       slug: 'Slug',
       description: 'Description',
+      image: 'Image',
+      uploadImage: 'Upload image',
+      removeImage: 'Remove image',
       branch: 'Branch',
       allBranches: 'All branches',
       products: 'products',
@@ -241,10 +272,21 @@ const en: Messages = {
       addOption: '+ Add option',
       removeGroup: 'Remove group',
       searchPlaceholder: 'Search products...',
+      image: 'Image',
+      uploadImage: 'Upload image',
+      removeImage: 'Remove image',
     },
 
     ordersAdmin: {
       title: 'Order management',
+      exportCsv: 'Export CSV',
+      dateFrom: 'From',
+      dateTo: 'To',
+      customRange: 'Custom range',
+      today: 'Today',
+      last7days: '7 days',
+      last30days: '30 days',
+      thisMonth: 'This month',
       allStatuses: 'All statuses',
       allBranches: 'All branches',
       orderNumber: '№',
@@ -269,6 +311,21 @@ const en: Messages = {
         completed: 'Completed',
         cancelled: 'Cancelled',
       },
+    },
+
+    deliveryZones: {
+      title: 'Delivery Zones',
+      create: 'Add delivery zone',
+      edit: 'Edit delivery zone',
+      deleteConfirm: 'Are you sure you want to delete this delivery zone?',
+      name: 'Name',
+      branch: 'Branch',
+      fee: 'Delivery fee',
+      minOrder: 'Min. order amount',
+      estimatedMinutes: 'Delivery time (min)',
+      description: 'Description',
+      isActive: 'Active',
+      noZones: 'No delivery zones',
     },
 
     promotions: {
@@ -300,12 +357,41 @@ const en: Messages = {
         expired: 'Expired',
       },
     },
+
+    reviews: {
+      title: 'Customer Reviews',
+      pending: 'Pending',
+      approved: 'Approved',
+      all: 'All',
+      approve: 'Approve',
+      reject: 'Reject',
+      reply: 'Reply',
+      noReviews: 'No reviews',
+    },
+  },
+
+  notifications: {
+    newOrder: 'New order #{number}',
+    orderUpdated: 'Order #{number} — {status}',
   },
 
   notFound: {
     title: 'Page not found',
     description: "Sorry, the page you're looking for doesn't exist or has been moved.",
     goHome: 'Go to homepage',
+  },
+
+  reviews: {
+    title: 'Reviews',
+    writeReview: 'Write a Review',
+    submitReview: 'Submit',
+    rating: 'Rating',
+    comment: 'Comment',
+    commentPlaceholder: 'Share your experience...',
+    noReviews: 'No reviews yet',
+    loginRequired: 'Login to leave a review',
+    reviewSubmitted: 'Thanks for your review!',
+    orderRequired: 'You can review after receiving your order',
   },
 }
 

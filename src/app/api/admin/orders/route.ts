@@ -12,9 +12,22 @@ export async function GET(request: NextRequest) {
     const status = request.nextUrl.searchParams.get('status');
     const branchId = request.nextUrl.searchParams.get('branchId');
 
+    const dateFrom = request.nextUrl.searchParams.get('dateFrom');
+    const dateTo = request.nextUrl.searchParams.get('dateTo');
+
     const where: Record<string, unknown> = {};
     if (status && Object.values(OrderStatus).includes(status as OrderStatus)) where.status = status;
     if (branchId) where.branchId = branchId;
+    if (dateFrom || dateTo) {
+      const createdAt: Record<string, unknown> = {};
+      if (dateFrom) createdAt.gte = new Date(dateFrom);
+      if (dateTo) {
+        const to = new Date(dateTo);
+        to.setHours(23, 59, 59, 999);
+        createdAt.lte = to;
+      }
+      where.createdAt = createdAt;
+    }
 
     const [orders, total] = await Promise.all([
       db.order.findMany({

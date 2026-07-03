@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth, useBrand, API } from '@/lib/store'
 import type { BrandInfo } from '@/lib/store'
+import { useT } from '@/i18n'
 import BrandPicker from '@/components/storefront/brand-picker'
 import AuthDialog from '@/components/storefront/auth-dialog'
 import StorefrontHeader from '@/components/storefront/storefront-header'
@@ -15,6 +16,7 @@ import { UtensilsCrossed, Loader2 } from 'lucide-react'
 type ViewType = 'menu' | 'checkout' | 'orders' | 'profile'
 
 export default function StorefrontPage() {
+  const t = useT()
   const brand = useBrand((s) => s.brand)
   const setBrand = useBrand((s) => s.setBrand)
   const isAuthenticated = useAuth((s) => s.isAuthenticated)
@@ -97,7 +99,7 @@ export default function StorefrontPage() {
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="size-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Завантаження...</p>
+          <p className="text-muted-foreground">{t('common.loading')}</p>
         </div>
       </div>
     )
@@ -135,7 +137,7 @@ export default function StorefrontPage() {
             onBack={() => setView('menu')}
           />
         )}
-        {view === 'orders' && <OrdersView />}
+        {view === 'orders' && <OrdersView onNavigate={handleNavigate} />}
         {view === 'profile' && <ProfileView />}
       </main>
 

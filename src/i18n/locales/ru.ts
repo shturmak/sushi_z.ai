@@ -110,6 +110,30 @@ const ru: Messages = {
     branch: 'Филиал:',
     payment: 'Оплата:',
     confirmOrder: 'Подтвердить заказ',
+    deliveryZones: {
+      selectZone: 'Выберите зону доставки',
+      deliveryTime: '~{min} мин, {fee} ₴',
+      freeDelivery: 'Бесплатная доставка',
+    },
+  },
+
+  favorites: {
+    title: 'Избранное',
+    added: 'Добавлено в избранное',
+    removed: 'Удалено из избранного',
+    empty: 'Нет избранных товаров',
+  },
+
+  addresses: {
+    title: 'Мои адреса',
+    add: 'Добавить адрес',
+    edit: 'Редактировать',
+    delete: 'Удалить',
+    saveAddress: 'Сохранить адрес',
+    savedAddresses: 'Сохраненные адреса',
+    empty: 'Нет сохраненных адресов',
+    label: 'Название',
+    labelPlaceholder: 'Дом, Работа...',
   },
 
   orders: {
@@ -118,6 +142,7 @@ const ru: Messages = {
     emptyHint: 'Сделайте первый заказ из меню',
     repeat: 'Повторить',
     cancelOrder: 'Отменить',
+    repeatSuccess: 'Товары добавлены в корзину',
     timeline: 'Хронология:',
     statuses: {
       new: 'Новый',
@@ -168,15 +193,18 @@ const ru: Messages = {
     sidebar: {
       analytics: 'Аналитика',
       branches: 'Филиалы',
+      deliveryZones: 'Зоны доставки',
       menu: 'Меню',
       categories: 'Категории',
       products: 'Продукты',
       orders: 'Заказы',
       promotions: 'Акции / Промокоды',
+      reviews: 'Отзывы',
     },
 
     analytics: {
       title: 'Аналитика',
+      period: 'Период',
       totalOrders: 'Всего заказов',
       revenue: 'Доход',
       avgCheck: 'Средний чек',
@@ -211,6 +239,9 @@ const ru: Messages = {
       name: 'Название',
       slug: 'Slug',
       description: 'Описание',
+      image: 'Изображение',
+      uploadImage: 'Загрузить изображение',
+      removeImage: 'Удалить изображение',
       branch: 'Филиал',
       allBranches: 'Все филиалы',
       products: 'продуктов',
@@ -241,10 +272,21 @@ const ru: Messages = {
       addOption: '+ Добавить опцию',
       removeGroup: 'Удалить группу',
       searchPlaceholder: 'Поиск продуктов...',
+      image: 'Изображение',
+      uploadImage: 'Загрузить изображение',
+      removeImage: 'Удалить изображение',
     },
 
     ordersAdmin: {
       title: 'Управление заказами',
+      exportCsv: 'Экспорт CSV',
+      dateFrom: 'От',
+      dateTo: 'До',
+      customRange: 'Произвольный период',
+      today: 'Сегодня',
+      last7days: '7 дней',
+      last30days: '30 дней',
+      thisMonth: 'Этот месяц',
       allStatuses: 'Все статусы',
       allBranches: 'Все филиалы',
       orderNumber: '№',
@@ -269,6 +311,21 @@ const ru: Messages = {
         completed: 'Выполненный',
         cancelled: 'Отмененный',
       },
+    },
+
+    deliveryZones: {
+      title: 'Зоны доставки',
+      create: 'Добавить зону доставки',
+      edit: 'Редактировать зону доставки',
+      deleteConfirm: 'Вы уверены, что хотите удалить эту зону доставки?',
+      name: 'Название',
+      branch: 'Филиал',
+      fee: 'Стоимость доставки',
+      minOrder: 'Мин. сумма заказа',
+      estimatedMinutes: 'Время доставки (мин)',
+      description: 'Описание',
+      isActive: 'Активна',
+      noZones: 'Нет зон доставки',
     },
 
     promotions: {
@@ -300,12 +357,41 @@ const ru: Messages = {
         expired: 'Завершена',
       },
     },
+
+    reviews: {
+      title: 'Отзывы клиентов',
+      pending: 'На модерации',
+      approved: 'Подтверждённые',
+      all: 'Все',
+      approve: 'Подтвердить',
+      reject: 'Отклонить',
+      reply: 'Ответить',
+      noReviews: 'Нет отзывов',
+    },
+  },
+
+  notifications: {
+    newOrder: 'Новый заказ #{number}',
+    orderUpdated: 'Заказ #{number} — {status}',
   },
 
   notFound: {
     title: 'Страница не найдена',
     description: 'К сожалению, страница, которую вы ищете, не существует или была перемещена.',
     goHome: 'На главную',
+  },
+
+  reviews: {
+    title: 'Отзывы',
+    writeReview: 'Оставить отзыв',
+    submitReview: 'Отправить',
+    rating: 'Оценка',
+    comment: 'Комментарий',
+    commentPlaceholder: 'Поделитесь впечатлениями...',
+    noReviews: 'Пока нет отзывов',
+    loginRequired: 'Войдите, чтобы оставить отзыв',
+    reviewSubmitted: 'Спасибо за отзыв!',
+    orderRequired: 'Отзыв можно оставить после получения заказа',
   },
 }
 

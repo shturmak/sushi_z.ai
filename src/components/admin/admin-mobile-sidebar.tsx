@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  BarChart3, Store, UtensilsCrossed, ShoppingCart, Tag,
+  BarChart3, Store, UtensilsCrossed, ShoppingCart, Tag, Star,
   ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -21,6 +21,7 @@ const navItems = [
   },
   { href: '/admin/orders', label: 'Закази', icon: ShoppingCart },
   { href: '/admin/promotions', label: 'Акції / Промокоди', icon: Tag },
+  { href: '/admin/reviews', label: 'Відгуки', icon: Star },
 ];
 
 export function AdminMobileSidebar() {

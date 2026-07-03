@@ -9,6 +9,13 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   ChevronLeft,
   ChevronRight,
   Loader2,
@@ -18,7 +25,7 @@ import {
   CreditCard,
   Banknote,
   Gift,
-  Percent,
+  Clock,
 } from 'lucide-react'
 
 // ── Types ────────────────────────────────────────────────
@@ -35,6 +42,14 @@ interface Branch {
   id: string
   name: string
   address: string
+}
+
+interface DeliveryZone {
+  id: string
+  name: string
+  deliveryFee: number
+  estimatedMinutes: number
+  minOrder: number
 }
 
 interface CheckoutViewProps {
@@ -92,11 +107,42 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
   const [selectedBranchId, setSelectedBranchId] = useState<string>('')
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [subtotal, setSubtotal] = useState(0)
-  const [deliveryFee, setDeliveryFee] = useState(0)
+
+  // Delivery zones
+  const [deliveryZones, setDeliveryZones] = useState<DeliveryZone[]>([])
+  const [selectedZoneId, setSelectedZoneId] = useState<string>('')
+  const [zonesLoaded, setZonesLoaded] = useState(false)
+  const [fetchBranchId, setFetchBranchId] = useState<string | null>(null)
+const [freeDeliveryPromo, setFreeDeliveryPromo] = useState(false)
 
   // Submit
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+
+  // Saved addresses
+  interface SavedAddress {
+    id: string; label: string | null; street: string; building: string | null; apartment: string | null; floor: string | null; entrance: string | null; comment: string | null
+  }
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([])
+  const [saveAddressChecked, setSaveAddressChecked] = useState(false)
+  const [addressLabel, setAddressLabel] = useState('')
+
+  // ── Load saved addresses ──────────────────────────────
+  useEffect(() => {
+    if (!isAuthenticated) return
+    API.addresses.list().then(({ data }) => {
+      if (data && Array.isArray(data)) setSavedAddresses(data as SavedAddress[])
+    })
+  }, [isAuthenticated])
+
+  function selectSavedAddress(addr: SavedAddress) {
+    setStreet(addr.street)
+    setBuilding(addr.building || '')
+    setApartment(addr.apartment || '')
+    setFloor(addr.floor || '')
+    setEntrance(addr.entrance || '')
+    setComment(addr.comment || '')
+  }
 
   // ── Load data on mount ─────────────────────────────────
   useEffect(() => {
@@ -111,7 +157,11 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
         const bList = branchesRes.data as Branch[]
         setBranches(bList)
         if (bList.length > 0) {
-          setSelectedBranchId(bList[0].id)
+          const firstId = bList[0].id
+          setSelectedBranchId(firstId)
+          if (orderType === 'delivery') {
+            setFetchBranchId(firstId)
+          }
         }
       }
 
@@ -128,6 +178,44 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
     if (isAuthenticated) load()
   }, [isAuthenticated])
 
+  // ── Fetch delivery zones when branch changes (delivery mode) ──
+  const selectedZone = deliveryZones.find((z) => z.id === selectedZoneId)
+  const deliveryFee = orderType === 'delivery' && !freeDeliveryPromo ? (selectedZone?.deliveryFee ?? 0) : 0
+
+  useEffect(() => {
+    if (!fetchBranchId) return
+    let cancelled = false
+    async function fetchZones() {
+      const { data } = await API.branches.zones(fetchBranchId)
+      if (cancelled) return
+      if (data && Array.isArray(data)) {
+        setDeliveryZones(data as DeliveryZone[])
+        if (data.length > 0) {
+          setSelectedZoneId(data[0].id)
+        }
+      } else {
+        setDeliveryZones([])
+        setSelectedZoneId('')
+      }
+      setZonesLoaded(true)
+    }
+    fetchZones()
+    return () => { cancelled = true }
+  }, [fetchBranchId])
+
+  // Trigger zone fetch when branch + type are ready
+  function handleOrderTypeChange(type: 'delivery' | 'pickup') {
+    setOrderType(type)
+    if (type === 'pickup') {
+      setSelectedZoneId('')
+      setDeliveryZones([])
+      setZonesLoaded(false)
+      setFetchBranchId(null)
+    } else if (selectedBranchId) {
+      setFetchBranchId(selectedBranchId)
+    }
+  }
+
   // ── Derived values ─────────────────────────────────────
   const discount = promoDiscount
   const total = Math.max(0, subtotal + deliveryFee - discount - bonusToUse)
@@ -141,6 +229,7 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
       setPromoError(error)
       setPromoDiscount(0)
       setPromoData(null)
+      setFreeDeliveryPromo(false)
     } else if (data) {
       setPromoData(data)
       let disc = 0
@@ -149,7 +238,7 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
       } else if (data.type === 'fixed') {
         disc = data.value
       } else if (data.type === 'free_delivery') {
-        setDeliveryFee(0)
+        setFreeDeliveryPromo(true)
       }
       setPromoDiscount(disc)
     }
@@ -190,6 +279,21 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
 
     if (orderType === 'delivery') {
       orderPayload.address = { street, building, apartment, floor, entrance }
+      if (selectedZoneId) {
+        orderPayload.deliveryZoneId = selectedZoneId
+      }
+    }
+
+    // Save address if checked
+    if (orderType === 'delivery' && saveAddressChecked && street.trim()) {
+      API.addresses.create({
+        street,
+        building: building || undefined,
+        apartment: apartment || undefined,
+        floor: floor || undefined,
+        entrance: entrance || undefined,
+        label: addressLabel || undefined,
+      })
     }
 
     const { data, error } = await API.orders.create(orderPayload)
@@ -240,7 +344,7 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
       {step === 0 && (
         <div className="space-y-3">
           <button
-            onClick={() => setOrderType('delivery')}
+            onClick={() => handleOrderTypeChange('delivery')}
             className={`flex w-full items-center gap-4 rounded-xl border-2 p-4 transition-all ${
               orderType === 'delivery' ? 'border-current' : 'border-transparent bg-muted/50'
             }`}
@@ -256,7 +360,7 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
           </button>
 
           <button
-            onClick={() => setOrderType('pickup')}
+            onClick={() => handleOrderTypeChange('pickup')}
             className={`flex w-full items-center gap-4 rounded-xl border-2 p-4 transition-all ${
               orderType === 'pickup' ? 'border-current' : 'border-transparent bg-muted/50'
             }`}
@@ -278,6 +382,29 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
         <div className="space-y-4">
           {orderType === 'delivery' ? (
             <>
+              {/* Saved Addresses */}
+              {savedAddresses.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">{t('addresses.savedAddresses')}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {savedAddresses.map((addr) => (
+                      <button
+                        key={addr.id}
+                        onClick={() => selectSavedAddress(addr)}
+                        className="flex items-center gap-2 rounded-lg border p-3 text-sm transition-colors hover:border-current text-left"
+                        style={street === addr.street && building === (addr.building || '') ? { borderColor: primaryColor, color: primaryColor } : {}}
+                      >
+                        <MapPin className="size-4 shrink-0 text-muted-foreground" />
+                        <div>
+                          {addr.label && <span className="font-medium">{addr.label} — </span>}
+                          {[addr.street, addr.building, addr.apartment].filter(Boolean).join(', ')}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t('checkout.street')} *</label>
                 <Input
@@ -330,6 +457,56 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
                   onChange={(e) => setComment(e.target.value)}
                 />
               </div>
+
+              {/* Save address option */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={saveAddressChecked}
+                    onChange={(e) => setSaveAddressChecked(e.target.checked)}
+                    className="rounded"
+                  />
+                  {t('addresses.saveAddress')}
+                </label>
+                {saveAddressChecked && (
+                  <Input
+                    placeholder={t('addresses.labelPlaceholder')}
+                    value={addressLabel}
+                    onChange={(e) => setAddressLabel(e.target.value)}
+                  />
+                )}
+              </div>
+
+              {/* Delivery zone selector */}
+              {deliveryZones.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{t('checkout.deliveryZones.selectZone')}</label>
+                  <Select value={selectedZoneId} onValueChange={setSelectedZoneId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('checkout.deliveryZones.selectZone')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {deliveryZones.map((zone) => (
+                        <SelectItem key={zone.id} value={zone.id}>
+                          <div className="flex items-center gap-2">
+                            <Clock className="size-3.5 text-muted-foreground shrink-0" />
+                            <span>{zone.name}</span>
+                            <span className="text-muted-foreground">
+                              — ~{zone.estimatedMinutes} хв, {Math.round(zone.deliveryFee)} ₴
+                              {zone.minOrder > 0 ? ` (мін. ${Math.round(zone.minOrder)} ₴)` : ''}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {zonesLoaded && deliveryZones.length === 0 && (
+                <p className="text-sm text-muted-foreground">{t('checkout.deliveryZones.freeDelivery')}</p>
+              )}
             </>
           ) : (
             <Card>
@@ -501,10 +678,16 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
                 <span className="text-muted-foreground">{t('common.subtotal')}</span>
                 <span>{Math.round(subtotal)} ₴</span>
               </div>
-              {deliveryFee > 0 && (
+              {orderType === 'delivery' && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Доставка:</span>
-                  <span>{Math.round(deliveryFee)} ₴</span>
+                  <span className="text-muted-foreground">{t('checkout.delivery')}:</span>
+                  <span className="font-medium">
+                    {selectedZone
+                      ? t('checkout.deliveryZones.deliveryTime')
+                          .replace('{min}', String(selectedZone.estimatedMinutes))
+                          .replace('{fee}', String(Math.round(selectedZone.deliveryFee)))
+                      : t('checkout.deliveryZones.freeDelivery')}
+                  </span>
                 </div>
               )}
               {discount > 0 && (

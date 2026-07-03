@@ -17,7 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Pencil, Trash2, Plus, X, Search } from 'lucide-react';
+import { Pencil, Trash2, Plus, X, Search, Upload } from 'lucide-react';
 import { PageHeader } from '@/components/admin/page-header';
 import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { TableSkeleton } from '@/components/admin/admin-skeletons';
@@ -35,6 +35,7 @@ const emptyForm: ProductFormData = {
   name: '',
   slug: '',
   description: '',
+  imageUrl: '',
   price: 0,
   weight: '',
   calories: 0,
@@ -74,6 +75,9 @@ export default function ProductsPage() {
   const [form, setForm] = useState<ProductFormData>(emptyForm);
   const [optionGroups, setOptionGroups] = useState<ProductFormData['optionGroups']>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const [uploading, setUploading] = useState(false);
 
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
@@ -90,6 +94,7 @@ export default function ProductsPage() {
           name: prod.name,
           slug: prod.slug,
           description: prod.description || '',
+          imageUrl: prod.imageUrl || '',
           price: prod.price,
           weight: prod.weight || '',
           calories: prod.calories || 0,
@@ -97,6 +102,7 @@ export default function ProductsPage() {
           sortOrder: prod.sortOrder,
           optionGroups: [],
         });
+        setImagePreview(prod.imageUrl || '');
         // Map option groups for editing
         setOptionGroups(
           prod.optionGroups.map(g => ({
@@ -181,6 +187,8 @@ export default function ProductsPage() {
     setEditingId(null);
     setForm(emptyForm);
     setOptionGroups([]);
+    setPendingImageFile(null);
+    setImagePreview('');
     setDialogOpen(true);
   }
 
@@ -189,11 +197,47 @@ export default function ProductsPage() {
     setDialogOpen(true);
   }
 
+  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPendingImageFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  function handleRemoveImage() {
+    setPendingImageFile(null);
+    setImagePreview('');
+    setForm(f => ({ ...f, imageUrl: '' }));
+  }
+
+  async function uploadImage(file: File): Promise<string | null> {
+    const token = (await import('@/lib/admin-api')).useAdminAuth.getState().token;
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/admin/upload', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.error?.message || 'Upload failed');
+    return json.data.url;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const body = { ...form, optionGroups };
+      let imageUrl = form.imageUrl;
+      if (pendingImageFile) {
+        setUploading(true);
+        const url = await uploadImage(pendingImageFile);
+        imageUrl = url || '';
+        setUploading(false);
+      }
+      const body = { ...form, imageUrl, optionGroups };
       if (editingId) {
         await adminPut(`/api/admin/menu/products/${editingId}`, body);
       } else {
@@ -201,11 +245,13 @@ export default function ProductsPage() {
       }
       setDialogOpen(false);
       setEditingId(null);
+      setPendingImageFile(null);
       refetch();
     } catch {
       // error toast handled by admin-api
     } finally {
       setSubmitting(false);
+      setUploading(false);
     }
   }
 
@@ -433,6 +479,53 @@ export default function ProductsPage() {
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                 rows={3}
               />
+            </div>
+
+            {/* ─── Image Upload ─── */}
+            <div className="space-y-2">
+              <Label>{t('admin.products.image')}</Label>
+              {imagePreview ? (
+                <div className="relative inline-block">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="h-32 w-32 rounded-lg object-cover border"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -right-2 h-6 w-6"
+                    onClick={handleRemoveImage}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div>
+                  <input
+                    id="prod-image"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={handleImageSelect}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById('prod-image')?.click()}
+                    disabled={uploading}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {uploading ? t('common.loading') : t('admin.products.uploadImage')}
+                  </Button>
+                </div>
+              )}
+              {!imagePreview && !pendingImageFile && (
+                <p className="text-xs text-muted-foreground">
+                  JPG, PNG, WebP, GIF — max 5MB
+                </p>
+              )}
             </div>
 
             <Separator />

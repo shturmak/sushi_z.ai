@@ -387,3 +387,188 @@ Stage Summary:
 - Offline menu support via cached API responses
 - Update prompt shown when new SW version detected
 - `bun run lint` passes with 0 errors
+
+---
+Task ID: 6.1
+Agent: general-purpose
+Task: Real-time order updates via WebSocket
+
+Work Log:
+- Created `mini-services/orders-ws/` Socket.io server (port 3004) with brand/order room routing
+- Created `mini-services/orders-ws/package.json` with socket.io dependency, ran `bun install`
+- Installed `socket.io-client@4.8.3` in main project
+- Created `src/hooks/use-order-ws.ts` — `useOrderWebSocket(brandId, options?)` hook with auto-connect, reconnect, subscription management
+- Created `src/components/admin/order-notifications.tsx` — `AdminOrderNotifications` component with sonner toasts, Web Audio API beep, and `useNewOrderCount()` zustand store
+- Updated `src/app/admin/layout.tsx` — mounted `AdminOrderNotifications` with brandId from admin auth
+- Updated `src/components/admin/admin-sidebar.tsx` — added red badge on Orders link using `useNewOrderCount()`, badge resets on click via `admin-orders-viewed` custom event
+- Updated `src/components/storefront/orders-view.tsx` — integrated WebSocket for real-time status updates, updates order in local list without refetch, shows ring+shadow flash animation on status change
+- Added `notifications.newOrder` and `notifications.orderUpdated` i18n keys to all 3 locale files (uk, ru, en)
+- Fixed React 19 lint errors (refs during render) by wrapping ref updates in useEffect
+- `bun run lint` passes with 0 errors
+
+Stage Summary:
+- Socket.io mini-service at `mini-services/orders-ws/` (port 3004) with brand/order room routing, events: order:created, order:new (alias), order:status_changed
+- Client hook `useOrderWebSocket` connects via `io("/?XTransformPort=3004&...")` with Caddy proxy support
+- Admin gets toast notifications + audio beep + sidebar red badge for new orders
+- Customer orders view updates in real-time with animated ring highlight
+- i18n keys added for notifications (uk/ru/en)
+
+---
+Task ID: 6.3
+Agent: general-purpose
+Task: Delivery zones & fee calculator
+
+Work Log:
+- Created `src/app/api/admin/delivery-zones/route.ts` — GET (paginated list with optional ?branchId= filter) + POST (create zone with branch validation)
+- Created `src/app/api/admin/delivery-zones/[id]/route.ts` — GET (single with branch name), PUT (update), DELETE
+- Verified existing public API at `src/app/api/branches/[id]/delivery-zones/route.ts` (returns active zones for a branch)
+- Added `DeliveryZoneFormData` interface to `src/lib/admin-types.ts`, extended `DeliveryZone` with `createdAt`, `updatedAt`, `branch?`
+- Created `src/app/admin/delivery-zones/page.tsx` — full CRUD admin page with:
+  - Table with columns: Name, Branch, Fee, Min Order, ETA, Status
+  - Branch filter (Select) + search filter
+  - Create/Edit dialog with fields: name, branchId (select), deliveryFee, minOrder, estimatedMinutes, description, isActive
+  - Delete confirmation dialog
+  - Toggle active status button
+  - Uses useAdminPaginatedApi, useAdminApi, PageHeader, ConfirmDialog, ActiveToggleBadge, TableSkeleton, shadcn/ui Select
+- Updated `src/components/admin/admin-sidebar.tsx` — added "Delivery Zones" nav item with MapPin icon after Branches
+- Updated `src/components/storefront/checkout-view.tsx`:
+  - Added DeliveryZone type, deliveryZones/selectedZoneId/zonesLoaded/fetchBranchId/freeDeliveryPromo state
+  - Fetches zones via API.branches.zones(selectedBranchId) when in delivery mode
+  - Shows zone selector (Select with Clock icon, zone name, ETA, fee, min order) in address step
+  - Shows "Безкоштовна доставка" when no zones defined
+  - Derives deliveryFee from selectedZone (no separate state)
+  - free_delivery promo type zeroes out delivery fee via freeDeliveryPromo flag
+  - Includes deliveryZoneId in order payload
+  - Replaced hardcoded "Доставка:" in summary with i18n delivery time/fee label
+- Added i18n keys to all 3 locale files (uk, ru, en):
+  - `admin.sidebar.deliveryZones` — sidebar label
+  - `admin.deliveryZones` — title, create, edit, deleteConfirm, name, branch, fee, minOrder, estimatedMinutes, description, isActive, noZones
+  - `checkout.deliveryZones` — selectZone, deliveryTime, freeDelivery
+- Refactored delivery zone state management to avoid React 19 lint errors (no setState in effect body)
+- `bun run lint` passes with 0 errors (6 pre-existing errors in unrelated files were present before but now resolved)
+
+Stage Summary:
+- Admin CRUD for delivery zones: list/create/update/delete via /api/admin/delivery-zones
+- Admin UI page at /admin/delivery-zones with table, filters, form dialog, delete confirmation
+- Public API at /api/branches/[id]/delivery-zones (pre-existing, verified working)
+- Storefront checkout integrates delivery zones: auto-fetch on branch select, zone picker, fee applied to total
+- free_delivery promo type correctly zeros delivery fee
+- Sidebar updated with MapPin icon menu item
+- All i18n keys added (uk/ru/en)
+
+---
+Task ID: 6.2
+Agent: general-purpose
+Task: Product image management
+
+Work Log:
+- Created `src/app/api/admin/upload/route.ts` — POST endpoint for multipart/form-data image uploads
+  - Admin-protected via `requireAdmin()`
+  - Accepts jpg, png, webp, gif only; max 5MB
+  - Saves to `public/uploads/` with timestamp-prefixed unique filenames
+  - Returns `{ url: "/uploads/filename.ext" }`
+- Updated `src/lib/admin-types.ts` — added `imageUrl: string` to `ProductFormData` and `CategoryFormData`
+- Updated `src/app/api/admin/menu/products/route.ts` — POST now accepts and persists `imageUrl`
+- Updated `src/app/api/admin/menu/products/[id]/route.ts` — PUT now accepts and persists `imageUrl`
+- Updated `src/app/api/admin/menu/categories/route.ts` — POST now accepts and persists `imageUrl`
+- Updated `src/app/admin/menu/products/page.tsx` — added image upload field with preview, remove button, and upload-before-submit flow
+- Updated `src/app/admin/menu/categories/page.tsx` — added same image upload/preview/remove functionality
+- Updated `src/components/storefront/menu-view.tsx`:
+  - Added `imageUrl` to Product and Category interfaces
+  - Created `ProductImage` component (shows `<img>` with onError fallback)
+  - Created `ProductPlaceholder` component (colored div with food emoji based on product name)
+  - Added `getCategoryEmoji()` helper with keyword matching (рол→🍣, піц→🍕, бургер→🍔, etc.)
+  - Category pills now show small image thumbnail or emoji icon
+  - Product cards show actual image when available, emoji placeholder when not
+- Added i18n keys `image`, `uploadImage`, `removeImage` to all 3 locale files (uk, en, ru) for both categories and products
+- Created `public/uploads/` directory for uploaded files
+
+Stage Summary:
+- Full image upload API with admin auth, file validation, and unique filename generation
+- Admin product and category forms now support image upload with live preview and removal
+- Storefront menu displays product images with graceful emoji fallback when no image
+- Category tabs show small image thumbnails or emoji icons
+- All changes pass ESLint with 0 errors
+
+---
+Task ID: 6.5
+Agent: admin-enhancements
+Task: Admin Enhancements (CSV Export, Date Range Filters, Analytics Improvements)
+
+Work Log:
+- Added 9 i18n keys to all 3 locale files (uk, ru, en): exportCsv, dateFrom, dateTo, customRange, today, last7days, last30days, thisMonth, analytics.period
+- Updated `/api/admin/orders` route to accept `dateFrom`/`dateTo` query params with proper date range filtering on `createdAt`
+- Created `/api/admin/orders/export` route: GET endpoint returning CSV with UTF-8 BOM + semicolon delimiter, columns: Order #, Date, Customer, Branch, Type, Status, Items Count, Subtotal, Discount, Total, Payment Method, Note
+- Updated orders admin page with: date range inputs (default last 30 days), Export CSV button with blob download, date params passed to paginated API
+- Updated analytics service to accept optional `AnalyticsDateRange`, compute range-scoped orders/revenue, ordersByDay chart data, and revenueByCategory via raw SQL
+- Updated analytics API route to accept `period` (today/7d/30d/month) or `dateFrom`/`dateTo` params
+- Updated admin analytics page with period selector buttons (Today, 7 days, 30 days, This month, Custom) and custom date inputs, dynamic KPI display based on selected period
+- Added quick stats to admin header: subtle "X замовлень, Y ₴" line fetched from analytics API (today period)
+- Updated Analytics type to include `range` field in orders/revenue objects
+
+Stage Summary:
+- CSV export for orders with full filter support (status, branch, date range)
+- Date range filtering on orders management page (default 30 days)
+- Analytics dashboard now supports 5 period presets + custom date range
+- Admin header shows today's orders count and revenue
+- All changes pass ESLint with 0 errors
+
+---
+Task ID: 6.4
+Agent: reviews-system-builder
+Task: Reviews & Ratings System
+
+Work Log:
+- Added Review model to Prisma schema with relations to User, Brand, Product, Order
+- Added reviews Review[] field to User, Brand, Product, and Order models
+- Ran db:push to sync schema
+- Created StarRating and StarRatingText UI components in src/components/ui/star-rating.tsx
+- Created public API GET/POST /api/products/[id]/reviews for listing approved reviews and creating new ones
+- Created admin API GET /api/admin/reviews for paginated listing with status/productId filters and pendingCount
+- Created admin API PUT/DELETE /api/admin/reviews/[id] for approve/reject, admin reply, and deletion
+- Built admin reviews page at src/app/admin/reviews/page.tsx with table, filters, approve/reject/reply/delete actions
+- Updated admin sidebar with Reviews menu item, Star icon, and pending count badge (amber)
+- Updated admin mobile sidebar with Reviews entry
+- Added storefront product reviews section to menu-view (average rating, last 3 reviews, write review dialog)
+- Added order item review button (star icon) to completed orders in orders-view
+- Created review dialog with interactive star rating selector and comment textarea
+- Added API.reviews helpers to store.ts (getByProduct, create)
+- Added i18n translations for all review-related keys to uk, ru, en locale files
+- Fixed pre-existing lint issue in menu-view (setState in effect)
+- Fixed lint issue in orders-view (replaced effect-based reset with key-based remount)
+- All changes pass ESLint with 0 errors
+
+Stage Summary:
+- Full reviews & ratings system operational
+- Customer can review products from completed orders (one per order per product)
+- Admin can moderate reviews (approve/reject), reply, and delete
+- Pending review count badge shown in admin sidebar
+- Star rating component supports both interactive and read-only modes
+- i18n support for Ukrainian, Russian, and English
+
+---
+Task ID: 6.6
+Agent: customer-features-agent
+Task: Customer Features (Order Repeat, Favorites, Address Book)
+
+Work Log:
+- Added i18n translations for favorites and addresses to uk.ts, ru.ts, en.ts
+- Added FavoriteProduct model to Prisma schema with userId/productId unique constraint
+- Added favoriteProducts relation to User, Brand, Product models
+- Ran db:push to sync schema and regenerate Prisma client
+- Created /api/favorites/route.ts with GET (list), POST (add), DELETE (remove) endpoints
+- Created /api/me/addresses/route.ts with GET (list) and POST (create) endpoints
+- Created /api/me/addresses/[id]/route.ts with PUT (update) and DELETE endpoints
+- Updated store.ts API: addresses CRUD now uses /api/me/addresses, added favorites API methods
+- Updated orders-view.tsx: Repeat button now shows for completed AND cancelled orders; handleRepeat navigates to menu view
+- Updated page.tsx: passes onNavigate callback to OrdersView
+- Updated menu-view.tsx: added Heart icon on each product card (filled red if favorited); added Favorites category tab with heart icon; optimistic favorite toggle; favorites view shows only favorited products
+- Updated checkout-view.tsx: loads saved addresses; shows "Saved Addresses" section above address form; clickable address cards fill form; "Save this address" checkbox with label input
+- Updated profile-view.tsx: added Favorites section with product grid and remove buttons; added Addresses section with list, edit/delete buttons, and add address dialog
+- Lint passes cleanly, db:push confirms schema in sync
+
+Stage Summary:
+- Order Repeat: completed/cancelled orders show Repeat button, navigates to menu on success
+- Favorites: full CRUD via API, heart toggle on menu cards, favorites tab, profile section
+- Address Book: saved addresses in checkout, address management in profile with dialog
+- All new i18n keys added to 3 locale files

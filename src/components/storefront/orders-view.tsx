@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useBrand, API } from '@/lib/store'
 import { useT } from '@/i18n'
+import { useOrderWebSocket, type OrderWSPayload } from '@/hooks/use-order-ws'
+import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -19,7 +21,17 @@ import {
   Truck,
   Package,
   ClipboardList,
+  Star,
 } from 'lucide-react'
+import { StarRating } from '@/components/ui/star-rating'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
 
 // ── Types ────────────────────────────────────────────────
 
@@ -29,6 +41,7 @@ interface OrderItem {
   productPrice: number
   quantity: number
   totalPrice: number
+  productId?: string
 }
 
 interface Order {
@@ -63,9 +76,13 @@ interface OrdersResponse {
   pages: number
 }
 
+interface OrdersViewProps {
+  onNavigate?: (view: 'menu' | 'orders' | 'profile') => void
+}
+
 // ── Component ────────────────────────────────────────────
 
-export default function OrdersView() {
+export default function OrdersView({ onNavigate }: OrdersViewProps) {
   const t = useT()
   const brand = useBrand((s) => s.brand)
   const primaryColor = brand?.primaryColor || '#e11d48'
@@ -106,6 +123,11 @@ export default function OrdersView() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [flashOrderId, setFlashOrderId] = useState<string | null>(null)
+
+  // Track which order IDs to subscribe to via WebSocket
+  const orderIds = orders.map((o) => o.id)
+  const { onStatusChanged } = useOrderWebSocket(brand?.id ?? null, { orderIds })
 
   useEffect(() => {
     let cancelled = false
@@ -120,15 +142,32 @@ export default function OrdersView() {
     return () => { cancelled = true }
   }, [])
 
+  // Real-time status updates via WebSocket
+  useEffect(() => {
+    const unsub = onStatusChanged((payload: OrderWSPayload) => {
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === payload.orderId
+            ? { ...o, status: payload.status || o.status }
+            : o,
+        ),
+      )
+      // Flash animation for the updated order
+      setFlashOrderId(payload.orderId)
+      setTimeout(() => setFlashOrderId(null), 2000)
+    })
+    return unsub
+  }, [onStatusChanged])
+
   async function handleRepeat(id: string) {
     const { data, error } = await API.orders.repeat(id)
     if (error) return
     if (data) {
-      const { data: freshData } = await API.orders.list()
-      if (freshData) {
-        const resp = freshData as OrdersResponse
-        setOrders(resp.orders || [])
-      }
+      // Update cart count from the returned cart
+      const cart = data as any
+      const totalItems = cart?.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0
+      // Navigate to menu view where cart is visible
+      onNavigate?.('menu')
     }
   }
 
@@ -199,7 +238,10 @@ export default function OrdersView() {
           const isExpanded = expandedId === order.id
 
           return (
-            <Card key={order.id} className="overflow-hidden">
+            <Card key={order.id} className={cn(
+              'overflow-hidden transition-all duration-500',
+              flashOrderId === order.id && 'ring-2 ring-primary shadow-lg shadow-primary/20',
+            )}>
               <CardContent className="p-0">
                 {/* Header row */}
                 <button
@@ -289,9 +331,19 @@ export default function OrdersView() {
                           <span className="text-muted-foreground">
                             {item.productName} × {item.quantity}
                           </span>
-                          <span className="font-medium">
-                            {Math.round(item.totalPrice)} ₴
-                          </span>
+                          <div className="flex items-center gap-2">
+                            {order.status === 'completed' && item.productId && (
+                              <OrderItemReviewButton
+                                orderId={order.id}
+                                productId={item.productId}
+                                productName={item.productName}
+                                primaryColor={primaryColor}
+                              />
+                            )}
+                            <span className="font-medium">
+                              {Math.round(item.totalPrice)} ₴
+                            </span>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -355,10 +407,11 @@ export default function OrdersView() {
 
                     {/* Actions */}
                     {(order.status === 'completed' ||
+                      order.status === 'cancelled' ||
                       order.status === 'new' ||
                       order.status === 'confirmed') && (
                       <div className="flex gap-2 pt-1">
-                        {order.status === 'completed' && (
+                        {(order.status === 'completed' || order.status === 'cancelled') && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -391,5 +444,136 @@ export default function OrdersView() {
         })}
       </div>
     </div>
+  )
+}
+
+// ── Order Item Review Button ──────────────────────────
+
+function OrderItemReviewButton({
+  orderId,
+  productId,
+  productName,
+  primaryColor,
+}: {
+  orderId: string
+  productId: string
+  productName: string
+  primaryColor: string
+}) {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const [dialogKey, setDialogKey] = useState(0)
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-6 gap-1 px-1.5 text-xs text-muted-foreground hover:text-amber-500"
+        onClick={() => {
+          setDialogKey((k) => k + 1)
+          setOpen(true)
+        }}
+      >
+        <Star className="size-3" />
+      </Button>
+      <OrderItemReviewDialog
+        key={dialogKey}
+        orderId={orderId}
+        productId={productId}
+        productName={productName}
+        open={open}
+        onClose={() => setOpen(false)}
+        primaryColor={primaryColor}
+      />
+    </>
+  )
+}
+
+function OrderItemReviewDialog({
+  orderId,
+  productId,
+  productName,
+  open,
+  onClose,
+  primaryColor,
+}: {
+  orderId: string
+  productId: string
+  productName: string
+  open: boolean
+  onClose: () => void
+  primaryColor: string
+}) {
+  const t = useT()
+  const [rating, setRating] = useState(0)
+  const [comment, setComment] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [alreadyReviewed, setAlreadyReviewed] = useState(false)
+
+  async function handleSubmit() {
+    if (!rating) return
+    setSubmitting(true)
+    const { error } = await API.reviews.create(productId, {
+      orderId,
+      rating,
+      comment: comment || undefined,
+    })
+    setSubmitting(false)
+    if (error) {
+      if (error.includes('already') || error.includes('409')) {
+        setAlreadyReviewed(true)
+      }
+      return
+    }
+    setSuccess(true)
+    setTimeout(() => {
+      onClose()
+    }, 2000)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{t('reviews.writeReview')}</DialogTitle>
+        </DialogHeader>
+        {success ? (
+          <p className="text-sm text-center py-4 text-green-600 font-medium">{t('reviews.reviewSubmitted')}</p>
+        ) : alreadyReviewed ? (
+          <p className="text-sm text-center py-4 text-muted-foreground">{t('reviews.reviewSubmitted')}</p>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">{productName}</p>
+            <div>
+              <p className="text-sm font-medium mb-1.5">{t('reviews.rating')}</p>
+              <StarRating rating={rating} interactive onChange={setRating} />
+            </div>
+            <div>
+              <p className="text-sm font-medium mb-1.5">{t('reviews.comment')}</p>
+              <Textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder={t('reviews.commentPlaceholder')}
+                rows={3}
+              />
+            </div>
+          </div>
+        )}
+        {!success && !alreadyReviewed && (
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={!rating || submitting}
+              style={{ backgroundColor: primaryColor }}
+              className="text-white"
+            >
+              {t('reviews.submitReview')}
+            </Button>
+          </DialogFooter>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }

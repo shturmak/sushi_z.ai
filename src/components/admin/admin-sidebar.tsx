@@ -3,12 +3,34 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  BarChart3, Store, UtensilsCrossed, ShoppingCart,
-  Tag, ChevronDown, ChevronRight,
+  BarChart3, Store, MapPin, UtensilsCrossed, ShoppingCart,
+  Tag, Star, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useT } from '@/i18n';
+import { useNewOrderCount } from '@/components/admin/order-notifications';
+import { usePendingReviewCount } from '@/app/admin/reviews/page';
+
+function OrdersBadge() {
+  const { count } = useNewOrderCount()
+  if (count === 0) return null
+  return (
+    <span className="ml-auto inline-flex items-center justify-center h-5 min-w-[1.25rem] px-1.5 rounded-full bg-red-500 text-[11px] font-bold text-white leading-none">
+      {count > 99 ? '99+' : count}
+    </span>
+  )
+}
+
+function ReviewsBadge() {
+  const count = usePendingReviewCount()
+  if (count === 0) return null
+  return (
+    <span className="ml-auto inline-flex items-center justify-center h-5 min-w-[1.25rem] px-1.5 rounded-full bg-amber-500 text-[11px] font-bold text-white leading-none">
+      {count > 99 ? '99+' : count}
+    </span>
+  )
+}
 
 export function AdminSidebar() {
   const t = useT();
@@ -18,6 +40,7 @@ export function AdminSidebar() {
   const navItems = [
     { href: '/admin', label: t('admin.sidebar.analytics'), icon: BarChart3 },
     { href: '/admin/branches', label: t('admin.sidebar.branches'), icon: Store },
+    { href: '/admin/delivery-zones', label: t('admin.sidebar.deliveryZones'), icon: MapPin },
     {
       label: t('admin.sidebar.menu'), icon: UtensilsCrossed,
       children: [
@@ -27,6 +50,7 @@ export function AdminSidebar() {
     },
     { href: '/admin/orders', label: t('admin.sidebar.orders'), icon: ShoppingCart },
     { href: '/admin/promotions', label: t('admin.sidebar.promotions'), icon: Tag },
+    { href: '/admin/reviews', label: t('admin.sidebar.reviews'), icon: Star },
   ];
 
   return (
@@ -83,10 +107,15 @@ export function AdminSidebar() {
           }
 
           const isActive = item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href!);
+          const showBadge = item.href === '/admin/orders'
+          const showReviewsBadge = item.href === '/admin/reviews'
           return (
             <Link
               key={item.href}
               href={item.href!}
+              onClick={() => {
+                if (showBadge) window.dispatchEvent(new Event('admin-orders-viewed'))
+              }}
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
                 isActive
@@ -96,6 +125,8 @@ export function AdminSidebar() {
             >
               <item.icon className="h-4 w-4 shrink-0" />
               {item.label}
+              {showBadge && <OrdersBadge />}
+              {showReviewsBadge && <ReviewsBadge />}
             </Link>
           );
         })}

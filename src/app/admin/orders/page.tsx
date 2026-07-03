@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { format } from 'date-fns';
-import { Eye } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import { format, subDays, startOfMonth } from 'date-fns';
+import { Eye, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useAdminPaginatedApi, adminPut } from '@/lib/admin-api';
@@ -10,9 +10,11 @@ import type { Order, OrderStatus } from '@/lib/admin-types';
 import { PageHeader } from '@/components/admin/page-header';
 import { OrderStatusBadge, PaymentMethodBadge } from '@/components/admin/status-badges';
 import { TableSkeleton } from '@/components/admin/admin-skeletons';
+import { useAdminAuth } from '@/lib/admin-auth';
+import { useBrandStore } from '@/lib/brand-store';
 
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -53,6 +55,14 @@ const NEXT_STATUS: Record<OrderStatus, OrderStatus[]> = {
   cancelled: [],
 };
 
+function thirtyDaysAgo(): string {
+  return format(subDays(new Date(), 30), 'yyyy-MM-dd');
+}
+
+function todayStr(): string {
+  return format(new Date(), 'yyyy-MM-dd');
+}
+
 // ── Component ───────────────────────────────────────────
 
 export default function OrdersPage() {
@@ -81,12 +91,22 @@ export default function OrdersPage() {
 
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [branchFilter, setBranchFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState<string>(thirtyDaysAgo);
+  const [dateTo, setDateTo] = useState<string>(todayStr);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [statusChanging, setStatusChanging] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
-  const { data: orders, loading, refetch } = useAdminPaginatedApi<Order>(
-    '/api/admin/orders',
-  );
+  // Build API path with date params
+  const apiPath = useMemo(() => {
+    const params = new URLSearchParams();
+    if (dateFrom) params.set('dateFrom', dateFrom);
+    if (dateTo) params.set('dateTo', dateTo);
+    const qs = params.toString();
+    return `/api/admin/orders${qs ? `?${qs}` : ''}`;
+  }, [dateFrom, dateTo]);
+
+  const { data: orders, loading, refetch } = useAdminPaginatedApi<Order>(apiPath);
 
   // Client-side filtering
   const filteredOrders = orders.filter((order) => {
@@ -114,6 +134,49 @@ export default function OrdersPage() {
       setStatusChanging(false);
     }
   };
+
+  // ── CSV Export handler ──
+
+  const handleExportCsv = useCallback(() => {
+    setExporting(true);
+    const token = useAdminAuth.getState().token;
+    const brand = useBrandStore.getState().currentBrandId;
+
+    const params = new URLSearchParams();
+    if (statusFilter !== 'all') params.set('status', statusFilter);
+    if (branchFilter !== 'all') params.set('branchId', branchFilter);
+    if (dateFrom) params.set('dateFrom', dateFrom);
+    if (dateTo) params.set('dateTo', dateTo);
+    if (brand) params.set('brandId', brand);
+
+    const url = `/api/admin/orders/export?${params.toString()}`;
+
+    fetch(url, {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : '',
+        'Content-Type': 'application/json',
+      },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Export failed');
+        return res.blob();
+      })
+      .then((blob) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `orders-${dateFrom || 'all'}-${dateTo || 'all'}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(a.href);
+      })
+      .catch(() => {
+        toast.error('Export failed');
+      })
+      .finally(() => {
+        setExporting(false);
+      });
+  }, [statusFilter, branchFilter, dateFrom, dateTo]);
 
   // ── Address parsing ──
 
@@ -160,6 +223,32 @@ export default function OrdersPage() {
             ))}
           </SelectContent>
         </Select>
+
+        <Input
+          type="date"
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+          className="w-full sm:w-[160px]"
+          aria-label={t('admin.ordersAdmin.dateFrom')}
+        />
+
+        <Input
+          type="date"
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+          className="w-full sm:w-[160px]"
+          aria-label={t('admin.ordersAdmin.dateTo')}
+        />
+
+        <Button
+          variant="outline"
+          onClick={handleExportCsv}
+          disabled={exporting}
+          className="w-full sm:w-auto"
+        >
+          <Download className="h-4 w-4 mr-2" />
+          {t('admin.ordersAdmin.exportCsv')}
+        </Button>
       </div>
 
       {/* Table */}

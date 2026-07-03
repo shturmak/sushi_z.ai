@@ -142,10 +142,23 @@ export const API = {
     transactions: () => apiFetch('/api/loyalty/transactions'),
   },
   addresses: {
-    list: () => apiFetch('/api/addresses'),
+    list: () => apiFetch('/api/me/addresses'),
+    create: (data: any) => apiFetch('/api/me/addresses', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: any) => apiFetch(`/api/me/addresses/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id: string) => apiFetch(`/api/me/addresses/${id}`, { method: 'DELETE' }),
+  },
+  favorites: {
+    list: () => apiFetch('/api/favorites'),
+    add: (productId: string) => apiFetch('/api/favorites', { method: 'POST', body: JSON.stringify({ productId }) }),
+    remove: (productId: string) => apiFetch('/api/favorites', { method: 'DELETE', body: JSON.stringify({ productId }) }),
   },
   brands: {
     list: () => apiFetch('/api/brands'),
+  },
+  reviews: {
+    getByProduct: (productId: string) => apiFetch(`/api/products/${productId}/reviews`),
+    create: (productId: string, data: { orderId: string; rating: number; comment?: string }) =>
+      apiFetch(`/api/products/${productId}/reviews`, { method: 'POST', body: JSON.stringify(data) }),
   },
   admin: {
     analytics: () => apiFetch('/api/admin/analytics'),

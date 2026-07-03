@@ -108,6 +108,30 @@ const uk = {
     branch: 'Філія:',
     payment: 'Оплата:',
     confirmOrder: 'Підтвердити замовлення',
+    deliveryZones: {
+      selectZone: 'Оберіть зону доставки',
+      deliveryTime: '~{min} хв, {fee} ₴',
+      freeDelivery: 'Безкоштовна доставка',
+    },
+  },
+
+  favorites: {
+    title: 'Обране',
+    added: 'Додано до обраного',
+    removed: 'Видалено з обраного',
+    empty: 'Немає обраних товарів',
+  },
+
+  addresses: {
+    title: 'Мої адреси',
+    add: 'Додати адресу',
+    edit: 'Редагувати',
+    delete: 'Видалити',
+    saveAddress: 'Зберегти адресу',
+    savedAddresses: 'Збережені адреси',
+    empty: 'Немає збережених адрес',
+    label: 'Назва',
+    labelPlaceholder: 'Дім, Робота...',
   },
 
   orders: {
@@ -116,6 +140,7 @@ const uk = {
     emptyHint: 'Зробіть перше замовлення з меню',
     repeat: 'Повторити',
     cancelOrder: 'Скасувати',
+    repeatSuccess: 'Товари додано до кошика',
     timeline: 'Хронологія:',
     statuses: {
       new: 'Нове',
@@ -168,15 +193,18 @@ const uk = {
     sidebar: {
       analytics: 'Аналітика',
       branches: 'Філіали',
+      deliveryZones: 'Зони доставки',
       menu: 'Меню',
       categories: 'Категорії',
       products: 'Продукти',
       orders: 'Закази',
       promotions: 'Акції / Промокоди',
+      reviews: 'Відгуки',
     },
 
     analytics: {
       title: 'Аналітика',
+      period: 'Період',
       totalOrders: 'Всього замовлень',
       revenue: 'Дохід',
       avgCheck: 'Середній чек',
@@ -211,6 +239,9 @@ const uk = {
       name: 'Назва',
       slug: 'Slug',
       description: 'Опис',
+      image: 'Зображення',
+      uploadImage: 'Завантажити зображення',
+      removeImage: 'Видалити зображення',
       branch: 'Філія',
       allBranches: 'Усі філії',
       products: 'продуктів',
@@ -241,10 +272,21 @@ const uk = {
       addOption: '+ Додати опцію',
       removeGroup: 'Видалити групу',
       searchPlaceholder: 'Пошук продуктів...',
+      image: 'Зображення',
+      uploadImage: 'Завантажити зображення',
+      removeImage: 'Видалити зображення',
     },
 
     ordersAdmin: {
       title: 'Управління заказами',
+      exportCsv: 'Експорт CSV',
+      dateFrom: 'Від',
+      dateTo: 'До',
+      customRange: 'Довільний період',
+      today: 'Сьогодні',
+      last7days: '7 днів',
+      last30days: '30 днів',
+      thisMonth: 'Цей місяць',
       allStatuses: 'Всі статуси',
       allBranches: 'Всі філії',
       orderNumber: '№',
@@ -269,6 +311,21 @@ const uk = {
         completed: 'Виконаний',
         cancelled: 'Скасований',
       },
+    },
+
+    deliveryZones: {
+      title: 'Зони доставки',
+      create: 'Додати зону доставки',
+      edit: 'Редагувати зону доставки',
+      deleteConfirm: 'Ви впевнені, що хочете видалити цю зону доставки?',
+      name: 'Назва',
+      branch: 'Філія',
+      fee: 'Вартість доставки',
+      minOrder: 'Мін. сума замовлення',
+      estimatedMinutes: 'Час доставки (хв)',
+      description: 'Опис',
+      isActive: 'Активна',
+      noZones: 'Немає зон доставки',
     },
 
     promotions: {
@@ -300,12 +357,41 @@ const uk = {
         expired: 'Завершена',
       },
     },
+
+    reviews: {
+      title: 'Відгуки клієнтів',
+      pending: 'На модерації',
+      approved: 'Підтверджені',
+      all: 'Всі',
+      approve: 'Підтвердити',
+      reject: 'Відхилити',
+      reply: 'Відповісти',
+      noReviews: 'Немає відгуків',
+    },
+  },
+
+  notifications: {
+    newOrder: 'Нове замовлення #{number}',
+    orderUpdated: 'Замовлення #{number} — {status}',
   },
 
   notFound: {
     title: 'Сторінку не знайдено',
     description: 'На жаль, сторінка, яку ви шукаєте, не існує або була переміщена.',
     goHome: 'На головну',
+  },
+
+  reviews: {
+    title: 'Відгуки',
+    writeReview: 'Залишити відгук',
+    submitReview: 'Надіслати',
+    rating: 'Оцінка',
+    comment: 'Коментар',
+    commentPlaceholder: 'Поділіться враженнями...',
+    noReviews: 'Ще немає відгуків',
+    loginRequired: 'Увійдіть, щоб залишити відгук',
+    reviewSubmitted: 'Дякуємо за відгук!',
+    orderRequired: 'Відгук можна залишити після отримання замовлення',
   },
 } as const
 

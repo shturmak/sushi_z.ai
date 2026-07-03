@@ -32,6 +32,19 @@ export interface DeliveryZone {
   estimatedMinutes: number;
   polygonData: string | null;
   isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  branch?: { name: string } | null;
+}
+
+export interface DeliveryZoneFormData {
+  name: string;
+  branchId: string;
+  description: string;
+  minOrder: number;
+  deliveryFee: number;
+  estimatedMinutes: number;
+  isActive: boolean;
 }
 
 export interface Category {
@@ -155,8 +168,8 @@ export interface Promotion {
 }
 
 export interface Analytics {
-  orders: { today: number; week: number; month: number };
-  revenue: { today: number; week: number; month: number };
+  orders: { today: number; week: number; month: number; range: number };
+  revenue: { today: number; week: number; month: number; range: number };
   statusDistribution: { status: string; count: number }[];
   topProducts: { name: string; quantity: number; revenue: number }[];
   recentOrders: Order[];
@@ -198,6 +211,7 @@ export interface CategoryFormData {
   name: string;
   slug: string;
   description: string;
+  imageUrl: string;
   sortOrder: number;
   isActive: boolean;
 }
@@ -208,6 +222,7 @@ export interface ProductFormData {
   name: string;
   slug: string;
   description: string;
+  imageUrl: string;
   price: number;
   weight: string;
   calories: number;
