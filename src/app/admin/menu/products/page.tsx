@@ -21,8 +21,9 @@ import { Pencil, Trash2, Plus, X, Search } from 'lucide-react';
 import { PageHeader } from '@/components/admin/page-header';
 import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { TableSkeleton } from '@/components/admin/admin-skeletons';
-import { useAdminPaginatedApi, useAdminApi, adminPost, adminPut, adminDelete } from '@/lib/admin-api';
+import { useAdminPaginatedApi, adminPost, adminPut, adminDelete } from '@/lib/admin-api';
 import type { Product, Category, ProductFormData } from '@/lib/admin-types';
+import { useT } from '@/i18n';
 
 // ─── Option groups helper types ───
 type OptionItem = ProductFormData['optionGroups'][number]['options'][number];
@@ -43,6 +44,7 @@ const emptyForm: ProductFormData = {
 };
 
 export default function ProductsPage() {
+  const t = useT();
   const { data: products, loading, refetch } = useAdminPaginatedApi<Product>(
     '/api/admin/menu/products',
   );
@@ -226,19 +228,19 @@ export default function ProductsPage() {
   return (
     <>
       <PageHeader
-        title="Продукти"
-        description="Керування продуктами меню"
-        action={{ label: 'Додати продукт', onClick: openCreate }}
+        title={t('admin.products.title')}
+        description=""
+        action={{ label: t('admin.products.create'), onClick: openCreate }}
       />
 
       {/* Filters row */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-full sm:w-[220px]">
-            <SelectValue placeholder="Всі категорії" />
+            <SelectValue placeholder={t('admin.products.category')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Всі категорії</SelectItem>
+            <SelectItem value="all">{t('admin.products.allBranches')}</SelectItem>
             {categories.map(cat => (
               <SelectItem key={cat.id} value={cat.id}>
                 {cat.name}
@@ -250,7 +252,7 @@ export default function ProductsPage() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Пошук за назвою..."
+            placeholder={t('admin.products.searchPlaceholder')}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -263,19 +265,19 @@ export default function ProductsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Категорія</TableHead>
-              <TableHead>Назва</TableHead>
-              <TableHead className="text-right">Ціна</TableHead>
-              <TableHead>Вага</TableHead>
-              <TableHead className="text-center">Наявність</TableHead>
-              <TableHead className="text-right">Дії</TableHead>
+              <TableHead>{t('admin.products.category')}</TableHead>
+              <TableHead>{t('admin.products.name')}</TableHead>
+              <TableHead className="text-right">{t('admin.products.price')}</TableHead>
+              <TableHead>{t('admin.products.weight')}</TableHead>
+              <TableHead className="text-center">{t('admin.products.available')}</TableHead>
+              <TableHead className="text-right">{t('common.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredProducts.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                  Немає продуктів
+                  {t('common.noData')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -290,10 +292,10 @@ export default function ProductsPage() {
                   <TableCell className="text-center">
                     {prod.isAvailable ? (
                       <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                        Так
+                        —
                       </Badge>
                     ) : (
-                      <Badge variant="destructive">Ні</Badge>
+                      <Badge variant="destructive">—</Badge>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
@@ -322,20 +324,20 @@ export default function ProductsPage() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingId ? 'Редагувати продукт' : 'Новий продукт'}
+              {editingId ? t('admin.products.edit') : t('admin.products.create')}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Basic fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="prod-category">Категорія *</Label>
+                <Label htmlFor="prod-category">{t('admin.products.category')} *</Label>
                 <Select
                   value={form.categoryId}
                   onValueChange={v => setForm(f => ({ ...f, categoryId: v }))}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Оберіть категорію" />
+                    <SelectValue placeholder={t('admin.products.category')} />
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map(cat => (
@@ -348,7 +350,7 @@ export default function ProductsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="prod-name">Назва *</Label>
+                <Label htmlFor="prod-name">{t('admin.products.name')} *</Label>
                 <Input
                   id="prod-name"
                   value={form.name}
@@ -358,7 +360,7 @@ export default function ProductsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="prod-slug">Slug *</Label>
+                <Label htmlFor="prod-slug">{t('admin.products.slug')} *</Label>
                 <Input
                   id="prod-slug"
                   value={form.slug}
@@ -368,7 +370,7 @@ export default function ProductsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="prod-price">Ціна (₴) *</Label>
+                <Label htmlFor="prod-price">{t('admin.products.price')} (₴) *</Label>
                 <Input
                   id="prod-price"
                   type="number"
@@ -381,17 +383,17 @@ export default function ProductsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="prod-weight">Вага</Label>
+                <Label htmlFor="prod-weight">{t('admin.products.weight')}</Label>
                 <Input
                   id="prod-weight"
-                  placeholder="напр. 240г"
+                  placeholder={t('admin.products.weight')}
                   value={form.weight}
                   onChange={e => setForm(f => ({ ...f, weight: e.target.value }))}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="prod-calories">Калорійність</Label>
+                <Label htmlFor="prod-calories">{t('admin.products.calories')}</Label>
                 <Input
                   id="prod-calories"
                   type="number"
@@ -402,7 +404,7 @@ export default function ProductsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="prod-sort">Порядок сортування</Label>
+                <Label htmlFor="prod-sort">—</Label>
                 <Input
                   id="prod-sort"
                   type="number"
@@ -419,12 +421,12 @@ export default function ProductsPage() {
                     setForm(f => ({ ...f, isAvailable: checked }))
                   }
                 />
-                <Label htmlFor="prod-available">Доступний</Label>
+                <Label htmlFor="prod-available">{t('admin.products.available')}</Label>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="prod-desc">Опис</Label>
+              <Label htmlFor="prod-desc">{t('admin.products.description')}</Label>
               <Textarea
                 id="prod-desc"
                 value={form.description}
@@ -438,16 +440,16 @@ export default function ProductsPage() {
             {/* ─── Option Groups Block ─── */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Групи опцій</h3>
+                <h3 className="text-sm font-semibold">{t('admin.products.optionGroups')}</h3>
                 <Button type="button" variant="outline" size="sm" onClick={addGroup}>
                   <Plus className="h-4 w-4 mr-1" />
-                  Додати групу
+                  {t('admin.products.addGroup')}
                 </Button>
               </div>
 
               {optionGroups.length === 0 && (
                 <p className="text-sm text-muted-foreground">
-                  Немає груп опцій. Натисніть &quot;Додати групу&quot; щоб створити.
+                  {t('common.noData')}
                 </p>
               )}
 
@@ -469,15 +471,15 @@ export default function ProductsPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-xs">Назва групи</Label>
+                      <Label className="text-xs">{t('admin.products.optionGroupName')}</Label>
                       <Input
                         value={group.name}
                         onChange={e => updateGroup(gi, 'name', e.target.value)}
-                        placeholder="напр. Розмір"
+                        placeholder={t('admin.products.optionGroupName')}
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Макс. вибір</Label>
+                      <Label className="text-xs">{t('admin.products.optionMaxChoices')}</Label>
                       <Input
                         type="number"
                         min={1}
@@ -494,7 +496,7 @@ export default function ProductsPage() {
                           updateGroup(gi, 'isRequired', checked)
                         }
                       />
-                      <Label className="text-xs">Обов&apos;язкова</Label>
+                      <Label className="text-xs">{t('admin.products.optionRequired')}</Label>
                     </div>
                   </div>
 
@@ -507,7 +509,7 @@ export default function ProductsPage() {
                           onChange={e =>
                             updateOption(gi, oi, 'name', e.target.value)
                           }
-                          placeholder="Назва опції"
+                          placeholder={t('admin.products.optionName')}
                           className="flex-1"
                         />
                         <div className="relative w-28">
@@ -548,7 +550,7 @@ export default function ProductsPage() {
                       onClick={() => addOption(gi)}
                     >
                       <Plus className="h-3.5 w-3.5 mr-1" />
-                      Додати опцію
+                      {t('admin.products.addOption')}
                     </Button>
                   </div>
                 </div>
@@ -559,10 +561,10 @@ export default function ProductsPage() {
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                Скасувати
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={submitting}>
-                {submitting ? 'Збереження...' : editingId ? 'Оновити' : 'Створити'}
+                {submitting ? t('common.loading') : editingId ? t('common.save') : t('common.create')}
               </Button>
             </DialogFooter>
           </form>
@@ -573,9 +575,9 @@ export default function ProductsPage() {
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={open => !open && setDeleteTarget(null)}
-        title="Видалити продукт?"
-        description={`Ви впевнені, що хочете видалити продукт "${deleteTarget?.name}"? Цю дію неможливо скасувати.`}
-        confirmLabel="Видалити"
+        title={t('admin.products.deleteConfirm')}
+        description={`"${deleteTarget?.name}"`}
+        confirmLabel={t('common.delete')}
         onConfirm={handleDelete}
         variant="destructive"
       />

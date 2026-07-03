@@ -1,0 +1,11 @@
+{
+  "name": "telegram-bot",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "bun --hot index.ts"
+  },
+  "dependencies": {
+    "grammy": "^1.35.0",
+    "@prisma/client": "^6.11.1"
+  }
+}

@@ -4,6 +4,38 @@
 
 ---
 
+## [0.6.0] — 2026-07-03
+
+### Добавлено
+- **i18n (UA/RU/EN)**: полная интернационализация storefront + admin
+  - `src/i18n/` — Zustand store, хук `useT()`, LanguageSwitcher компонент
+  - 3 словаря: `uk.ts` (источник), `ru.ts`, `en.ts` (~300 ключей каждый)
+  - 7 storefront компонентов обновлены (brand-picker, header, auth, menu, cart, checkout, orders, profile)
+  - 7 admin файлов обновлены (analytics, branches, categories, products, orders, promotions, sidebar)
+  - Переключатель языков в хедере (🇺🇦/🇷🇺/🇬🇧), сохраняется в localStorage
+- **PWA**: Progressive Web App поддержка
+  - `public/manifest.json` — standalone display, theme #e11d48
+  - `public/sw.js` — Service Worker с 3 стратегиями кэширования (cache-first для статики, stale-while-revalidate для API, network-first для навигации)
+  - `src/components/pwa/ServiceWorkerRegistrar.tsx` — авто-регистрация SW, промпт обновления
+  - Иконки: `public/icons/icon.svg`, `icon-192.png`, `icon-512.png`
+- **SEO**: динамические мета-теги, Open Graph, sitemap, robots.txt
+  - Обновлён `metadata` в layout.tsx (keywords, OG, Twitter cards)
+  - `src/app/sitemap.ts` — динамический sitemap
+  - `src/app/robots.ts` — robots.txt (allow /, disallow /admin/ /api/)
+  - `src/app/not-found.tsx` — кастомная 404 страница с i18n
+- **Telegram-бот**: мини-сервис для заказов через Telegram
+  - `mini-services/telegram-bot/` — независимый Bun проект (grammy)
+  - Команды: /start (выбор бренда), /cart, /checkout, /orders, /help
+  - Inline keyboard: бренды → филиалы → категории → продукты → корзина
+  - Общая БД с основным приложением (SQLite)
+  - Создание реальных заказов в БД через бота
+
+### Изменено
+- **layout.tsx**: добавлен manifest, apple-mobile-web-app meta, ServiceWorkerRegistrar, Viewport export
+- **eslint.config.mjs**: добавлен `public/**` в игнор (plain JS service worker)
+
+---
+
 ## [0.5.0] — 2026-07-03
 
 ### Добавлено

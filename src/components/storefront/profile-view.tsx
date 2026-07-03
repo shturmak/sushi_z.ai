@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useBrand, useAuth, API } from '@/lib/store'
+import { useT } from '@/i18n'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -35,37 +36,38 @@ interface LoyaltyTransaction {
   createdAt: string
 }
 
-const TIER_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  bronze: {
-    label: 'Бронза',
-    color: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300',
-    icon: '🥉',
-  },
-  silver: {
-    label: 'Срібло',
-    color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-    icon: '🥈',
-  },
-  gold: {
-    label: 'Золото',
-    color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-    icon: '🥇',
-  },
-}
-
-const TX_TYPE_LABELS: Record<string, string> = {
-  earned: 'Нараховано',
-  spent: 'Витрачено',
-  adjusted: 'Коригування',
-  expired: 'Сплачено',
-}
-
 // ── Component ────────────────────────────────────────────
 
 export default function ProfileView() {
+  const t = useT()
   const brand = useBrand((s) => s.brand)
   const { user, logout } = useAuth()
   const primaryColor = brand?.primaryColor || '#e11d48'
+
+  const TIER_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
+    bronze: {
+      label: t('profile.tiers.bronze'),
+      color: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300',
+      icon: '🥉',
+    },
+    silver: {
+      label: t('profile.tiers.silver'),
+      color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+      icon: '🥈',
+    },
+    gold: {
+      label: t('profile.tiers.gold'),
+      color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+      icon: '🥇',
+    },
+  }
+
+  const TX_TYPE_LABELS: Record<string, string> = {
+    earned: t('profile.txTypes.earned'),
+    spent: t('profile.txTypes.spent'),
+    adjusted: t('profile.txTypes.adjusted'),
+    expired: t('profile.txTypes.expired'),
+  }
 
   const [loyalty, setLoyalty] = useState<LoyaltyData | null>(null)
   const [transactions, setTransactions] = useState<LoyaltyTransaction[]>([])
@@ -120,7 +122,7 @@ export default function ProfileView() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 pb-24 pt-4">
-      <h1 className="mb-6 text-2xl font-bold">Профіль</h1>
+      <h1 className="mb-6 text-2xl font-bold">{t('profile.title')}</h1>
 
       {/* User info card */}
       <Card className="mb-6">
@@ -159,13 +161,13 @@ export default function ProfileView() {
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
               <Star className="size-4" style={{ color: primaryColor }} />
-              Програма лояльності
+              {t('profile.loyaltyTitle')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="rounded-lg bg-muted/50 p-3 text-center">
-                <p className="text-sm text-muted-foreground">Баланс</p>
+                <p className="text-sm text-muted-foreground">{t('profile.balance')}</p>
                 <p
                   className="text-2xl font-bold"
                   style={{ color: primaryColor }}
@@ -174,7 +176,7 @@ export default function ProfileView() {
                 </p>
               </div>
               <div className="rounded-lg bg-muted/50 p-3 text-center">
-                <p className="text-sm text-muted-foreground">Всього зароблено</p>
+                <p className="text-sm text-muted-foreground">{t('profile.lifetime')}</p>
                 <p className="text-2xl font-bold">
                   {Math.round(loyalty.lifetime)} ₴
                 </p>
@@ -182,7 +184,7 @@ export default function ProfileView() {
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Ваш рівень:</span>
+              <span className="text-sm text-muted-foreground">{t('profile.yourLevel')}</span>
               <Badge className={tierInfo.color}>
                 <span className="mr-1">{tierInfo.icon}</span>
                 {tierInfo.label}
@@ -198,7 +200,7 @@ export default function ProfileView() {
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
               <Trophy className="size-4" style={{ color: primaryColor }} />
-              Історія бонусів
+              {t('profile.bonusHistory')}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -266,7 +268,7 @@ export default function ProfileView() {
           onClick={logout}
         >
           <LogOut className="size-4" />
-          Вийти
+          {t('header.logout')}
         </Button>
       </div>
     </div>

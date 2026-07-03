@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useBrand, API } from '@/lib/store'
+import { useT } from '@/i18n'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -62,46 +63,45 @@ interface OrdersResponse {
   pages: number
 }
 
-// ── Status config ────────────────────────────────────────
-
-const STATUS_MAP: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  new: { label: 'Нове', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300', icon: ClipboardList },
-  confirmed: { label: 'Підтверджено', color: 'bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-300', icon: Clock },
-  cooking: { label: 'Готується', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300', icon: Flame },
-  ready: { label: 'Готове', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300', icon: CheckCircle2 },
-  delivering: { label: 'Доставляється', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300', icon: Truck },
-  completed: { label: 'Виконано', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300', icon: CheckCircle2 },
-  cancelled: { label: 'Скасовано', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300', icon: XCircle },
-}
-
-const PAYMENT_LABELS: Record<string, string> = {
-  card: 'Картка',
-  cash: 'Готівка',
-  bonus: 'Бонуси',
-}
-
-// ── Timeline entries ────────────────────────────────────
-
-function getTimeline(order: Order): { label: string; time: string | null }[] {
-  const items = [
-    { label: 'Створено', time: order.createdAt },
-    { label: 'Підтверджено', time: order.confirmedAt },
-    { label: 'Приготування', time: order.cookingAt },
-    { label: 'Готове', time: order.readyAt },
-    { label: 'Доставка', time: order.deliveringAt },
-    { label: 'Виконано', time: order.completedAt },
-  ]
-  if (order.cancelledAt) {
-    items.push({ label: 'Скасовано', time: order.cancelledAt })
-  }
-  return items.filter((i) => i.time !== null)
-}
-
 // ── Component ────────────────────────────────────────────
 
 export default function OrdersView() {
+  const t = useT()
   const brand = useBrand((s) => s.brand)
   const primaryColor = brand?.primaryColor || '#e11d48'
+
+  // ── Status config (inside component for t() access) ───
+  const STATUS_MAP: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+    new: { label: t('orders.statuses.new'), color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300', icon: ClipboardList },
+    confirmed: { label: t('orders.statuses.confirmed'), color: 'bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-300', icon: Clock },
+    cooking: { label: t('orders.statuses.cooking'), color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300', icon: Flame },
+    ready: { label: t('orders.statuses.ready'), color: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300', icon: CheckCircle2 },
+    delivering: { label: t('orders.statuses.delivering'), color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300', icon: Truck },
+    completed: { label: t('orders.statuses.completed'), color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300', icon: CheckCircle2 },
+    cancelled: { label: t('orders.statuses.cancelled'), color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300', icon: XCircle },
+  }
+
+  const PAYMENT_LABELS: Record<string, string> = {
+    card: t('orders.payments.card'),
+    cash: t('orders.payments.cash'),
+    bonus: t('orders.payments.bonus'),
+  }
+
+  // ── Timeline entries ──────────────────────────────────
+  function getTimeline(order: Order): { label: string; time: string | null }[] {
+    const items = [
+      { label: t('orders.timelineLabels.created'), time: order.createdAt },
+      { label: t('orders.timelineLabels.confirmed'), time: order.confirmedAt },
+      { label: t('orders.timelineLabels.cooking'), time: order.cookingAt },
+      { label: t('orders.timelineLabels.ready'), time: order.readyAt },
+      { label: t('orders.timelineLabels.delivering'), time: order.deliveringAt },
+      { label: t('orders.timelineLabels.completed'), time: order.completedAt },
+    ]
+    if (order.cancelledAt) {
+      items.push({ label: t('orders.timelineLabels.cancelled'), time: order.cancelledAt })
+    }
+    return items.filter((i) => i.time !== null)
+  }
 
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
@@ -164,7 +164,7 @@ export default function OrdersView() {
   if (loading) {
     return (
       <div className="mx-auto max-w-2xl px-4 pb-24 pt-4 space-y-4">
-        <h1 className="text-2xl font-bold">Замовлення</h1>
+        <h1 className="text-2xl font-bold">{t('orders.title')}</h1>
         {Array.from({ length: 3 }).map((_, i) => (
           <Card key={i} className="animate-pulse">
             <CardContent className="p-4">
@@ -182,13 +182,13 @@ export default function OrdersView() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 pb-24 pt-4">
-      <h1 className="mb-6 text-2xl font-bold">Замовлення</h1>
+      <h1 className="mb-6 text-2xl font-bold">{t('orders.title')}</h1>
 
       {orders.length === 0 && (
         <div className="py-20 text-center text-muted-foreground">
           <Package className="mx-auto mb-4 size-12 opacity-40" />
-          <p className="text-lg">У вас ще немає замовлень</p>
-          <p className="text-sm mt-1">Зробіть перше замовлення з меню</p>
+          <p className="text-lg">{t('orders.empty')}</p>
+          <p className="text-sm mt-1">{t('orders.emptyHint')}</p>
         </div>
       )}
 
@@ -237,20 +237,20 @@ export default function OrdersView() {
                   <div className="border-t px-4 pb-4 pt-3 space-y-3">
                     {/* Branch & type */}
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Філія:</span>
+                      <span className="text-muted-foreground">{t('checkout.branch')}</span>
                       <span className="font-medium">{order.branch.name}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Тип:</span>
+                      <span className="text-muted-foreground">{t('checkout.type')}</span>
                       <span className="font-medium">
-                        {order.type === 'delivery' ? 'Доставка' : 'Самовивіз'}
+                        {order.type === 'delivery' ? t('checkout.delivery') : t('checkout.pickup')}
                       </span>
                     </div>
 
                     {/* Address */}
                     {order.type === 'delivery' && order.addressSnapshot && (
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Адреса:</span>
+                        <span className="text-muted-foreground">{t('checkout.address')}</span>
                         <span className="font-medium text-right max-w-[60%]">
                           {(() => {
                             try {
@@ -269,7 +269,7 @@ export default function OrdersView() {
                     {/* Payment */}
                     {order.payments.length > 0 && (
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Оплата:</span>
+                        <span className="text-muted-foreground">{t('checkout.payment')}</span>
                         <span className="font-medium">
                           {PAYMENT_LABELS[order.payments[0].method] ||
                             order.payments[0].method}
@@ -301,7 +301,7 @@ export default function OrdersView() {
                     {/* Totals */}
                     <div className="space-y-1 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Підсумок:</span>
+                        <span className="text-muted-foreground">{t('common.subtotal')}</span>
                         <span>{Math.round(order.subtotal)} ₴</span>
                       </div>
                       {order.deliveryFee > 0 && (
@@ -314,13 +314,13 @@ export default function OrdersView() {
                       )}
                       {order.discount > 0 && (
                         <div className="flex justify-between text-green-600">
-                          <span>Знижка:</span>
+                          <span>{t('common.discount')}:</span>
                           <span>-{Math.round(order.discount)} ₴</span>
                         </div>
                       )}
                       {order.bonusUsed > 0 && (
                         <div className="flex justify-between text-amber-600">
-                          <span>Бонуси:</span>
+                          <span>{t('common.bonuses')}:</span>
                           <span>-{Math.round(order.bonusUsed)} ₴</span>
                         </div>
                       )}
@@ -331,7 +331,7 @@ export default function OrdersView() {
                       <>
                         <Separator />
                         <div className="space-y-2">
-                          <p className="text-sm font-medium">Хронологія:</p>
+                          <p className="text-sm font-medium">{t('orders.timeline')}</p>
                           {getTimeline(order).map((entry, i) => (
                             <div
                               key={i}
@@ -366,7 +366,7 @@ export default function OrdersView() {
                             onClick={() => handleRepeat(order.id)}
                           >
                             <RotateCcw className="size-3.5" />
-                            Повторити
+                            {t('orders.repeat')}
                           </Button>
                         )}
                         {(order.status === 'new' ||
@@ -378,7 +378,7 @@ export default function OrdersView() {
                             onClick={() => handleCancel(order.id)}
                           >
                             <XCircle className="size-3.5" />
-                            Скасувати
+                            {t('orders.cancelOrder')}
                           </Button>
                         )}
                       </div>

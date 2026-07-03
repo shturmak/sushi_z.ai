@@ -18,6 +18,7 @@ import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { TableSkeleton } from '@/components/admin/admin-skeletons';
 import { useAdminPaginatedApi, adminPost, adminPut, adminDelete } from '@/lib/admin-api';
 import type { Category, CategoryFormData } from '@/lib/admin-types';
+import { useT } from '@/i18n';
 
 const emptyForm: CategoryFormData = {
   branchId: '',
@@ -29,6 +30,7 @@ const emptyForm: CategoryFormData = {
 };
 
 export default function CategoriesPage() {
+  const t = useT();
   const { data: categories, loading, refetch } = useAdminPaginatedApi<Category>(
     '/api/admin/menu/categories',
   );
@@ -120,28 +122,28 @@ export default function CategoriesPage() {
   return (
     <>
       <PageHeader
-        title="Категорії"
-        description="Керування категоріями меню"
-        action={{ label: 'Додати категорію', onClick: openCreate }}
+        title={t('admin.categories.title')}
+        description=""
+        action={{ label: t('admin.categories.create'), onClick: openCreate }}
       />
 
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Назва</TableHead>
-              <TableHead>Slug</TableHead>
-              <TableHead className="text-center">Продукти</TableHead>
-              <TableHead className="text-center">Порядок</TableHead>
-              <TableHead className="text-center">Активна</TableHead>
-              <TableHead className="text-right">Дії</TableHead>
+              <TableHead>{t('admin.categories.name')}</TableHead>
+              <TableHead>{t('admin.categories.slug')}</TableHead>
+              <TableHead className="text-center">{t('admin.categories.products')}</TableHead>
+              <TableHead className="text-center">—</TableHead>
+              <TableHead className="text-center">—</TableHead>
+              <TableHead className="text-right">{t('common.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {categories.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                  Немає категорій
+                  {t('common.noData')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -183,12 +185,12 @@ export default function CategoriesPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {editingId ? 'Редагувати категорію' : 'Нова категорія'}
+              {editingId ? t('admin.categories.edit') : t('admin.categories.create')}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="cat-name">Назва *</Label>
+              <Label htmlFor="cat-name">{t('admin.categories.name')} *</Label>
               <Input
                 id="cat-name"
                 value={form.name}
@@ -197,7 +199,7 @@ export default function CategoriesPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cat-slug">Slug *</Label>
+              <Label htmlFor="cat-slug">{t('admin.categories.slug')} *</Label>
               <Input
                 id="cat-slug"
                 value={form.slug}
@@ -206,7 +208,7 @@ export default function CategoriesPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cat-desc">Опис</Label>
+              <Label htmlFor="cat-desc">{t('admin.categories.description')}</Label>
               <Textarea
                 id="cat-desc"
                 value={form.description}
@@ -215,7 +217,7 @@ export default function CategoriesPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cat-sort">Порядок сортування</Label>
+              <Label htmlFor="cat-sort">—</Label>
               <Input
                 id="cat-sort"
                 type="number"
@@ -229,14 +231,14 @@ export default function CategoriesPage() {
                 checked={form.isActive}
                 onCheckedChange={checked => setForm(f => ({ ...f, isActive: checked }))}
               />
-              <Label htmlFor="cat-active">Активна</Label>
+              <Label htmlFor="cat-active">—</Label>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                Скасувати
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={submitting}>
-                {submitting ? 'Збереження...' : editingId ? 'Оновити' : 'Створити'}
+                {submitting ? t('common.loading') : editingId ? t('common.save') : t('common.create')}
               </Button>
             </DialogFooter>
           </form>
@@ -247,9 +249,9 @@ export default function CategoriesPage() {
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={open => !open && setDeleteTarget(null)}
-        title="Видалити категорію?"
-        description={`Ви впевнені, що хочете видалити категорію "${deleteTarget?.name}"? Цю дію неможливо скасувати.`}
-        confirmLabel="Видалити"
+        title={t('admin.categories.deleteConfirm')}
+        description={`"${deleteTarget?.name}"`}
+        confirmLabel={t('common.delete')}
         onConfirm={handleDelete}
         variant="destructive"
       />

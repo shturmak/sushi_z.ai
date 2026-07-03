@@ -8,24 +8,26 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
-
-const navItems = [
-  { href: '/admin', label: 'Аналітика', icon: BarChart3 },
-  { href: '/admin/branches', label: 'Філіали', icon: Store },
-  {
-    label: 'Меню', icon: UtensilsCrossed,
-    children: [
-      { href: '/admin/menu/categories', label: 'Категорії' },
-      { href: '/admin/menu/products', label: 'Блюда' },
-    ],
-  },
-  { href: '/admin/orders', label: 'Закази', icon: ShoppingCart },
-  { href: '/admin/promotions', label: 'Акції / Промокоди', icon: Tag },
-];
+import { useT } from '@/i18n';
 
 export function AdminSidebar() {
+  const t = useT();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(pathname.startsWith('/admin/menu'));
+
+  const navItems = [
+    { href: '/admin', label: t('admin.sidebar.analytics'), icon: BarChart3 },
+    { href: '/admin/branches', label: t('admin.sidebar.branches'), icon: Store },
+    {
+      label: t('admin.sidebar.menu'), icon: UtensilsCrossed,
+      children: [
+        { href: '/admin/menu/categories', label: t('admin.sidebar.categories') },
+        { href: '/admin/menu/products', label: t('admin.sidebar.products') },
+      ],
+    },
+    { href: '/admin/orders', label: t('admin.sidebar.orders'), icon: ShoppingCart },
+    { href: '/admin/promotions', label: t('admin.sidebar.promotions'), icon: Tag },
+  ];
 
   return (
     <aside className="hidden lg:flex lg:flex-col lg:w-64 border-r border-border bg-card h-screen sticky top-0">
@@ -35,7 +37,7 @@ export function AdminSidebar() {
         </div>
         <div>
           <h1 className="font-semibold text-sm leading-tight">Суші Мастер</h1>
-          <p className="text-xs text-muted-foreground">Адмін-панель</p>
+          <p className="text-xs text-muted-foreground">Admin</p>
         </div>
       </div>
 

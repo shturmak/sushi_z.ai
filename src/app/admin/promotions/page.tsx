@@ -39,6 +39,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { useT } from '@/i18n';
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -77,9 +78,9 @@ function formatValue(type: PromotionType, value: number): string {
     case 'fixed':
       return `${value} ₴`;
     case 'free_delivery':
-      return 'Безкоштовно';
+      return '—';
     case 'bonus':
-      return `+${value} балів`;
+      return `+${value}`;
     default:
       return String(value);
   }
@@ -88,11 +89,11 @@ function formatValue(type: PromotionType, value: number): string {
 function getValueLabel(type: PromotionType): string | null {
   switch (type) {
     case 'percentage':
-      return 'Значення (%)';
+      return '%';
     case 'fixed':
-      return 'Сума (₴)';
+      return '₴';
     case 'bonus':
-      return 'Кількість балів';
+      return '—';
     case 'free_delivery':
       return null;
     default:
@@ -100,24 +101,24 @@ function getValueLabel(type: PromotionType): string | null {
   }
 }
 
-// ── Promotion type & status options ──────────────────────
-
-const promotionTypes: { value: PromotionType; label: string }[] = [
-  { value: 'percentage', label: 'Відсоток' },
-  { value: 'fixed', label: 'Фіксована сума' },
-  { value: 'free_delivery', label: 'Безкоштовна доставка' },
-  { value: 'bonus', label: 'Бонусні бали' },
-];
-
-const promotionStatuses: { value: PromotionStatus; label: string }[] = [
-  { value: 'active', label: 'Активна' },
-  { value: 'inactive', label: 'Неактивна' },
-  { value: 'expired', label: 'Закінчилась' },
-];
-
 // ── Page Component ───────────────────────────────────────
 
 export default function PromotionsPage() {
+  const t = useT();
+
+  const promotionTypes: { value: PromotionType; label: string }[] = [
+    { value: 'percentage', label: t('admin.promotions.types.percentage') },
+    { value: 'fixed', label: t('admin.promotions.types.fixed') },
+    { value: 'free_delivery', label: t('admin.promotions.types.free_delivery') },
+    { value: 'bonus', label: t('admin.promotions.types.bonus') },
+  ];
+
+  const promotionStatuses: { value: PromotionStatus; label: string }[] = [
+    { value: 'active', label: t('admin.promotions.statuses.active') },
+    { value: 'inactive', label: t('admin.promotions.statuses.inactive') },
+    { value: 'expired', label: t('admin.promotions.statuses.expired') },
+  ];
+
   const { data: promotions, loading, refetch } = useAdminPaginatedApi<Promotion>('/api/admin/promotions');
 
   // Dialog state
@@ -145,15 +146,15 @@ export default function PromotionsPage() {
 
   async function handleSave() {
     if (!form.name.trim()) {
-      toast.error('Назва акції обовʼязкова');
+      toast.error(`${t('admin.promotions.name')} *`);
       return;
     }
     if (form.type !== 'free_delivery' && form.value <= 0) {
-      toast.error('Значення має бути більшим за 0');
+      toast.error(`${t('admin.promotions.value')} > 0`);
       return;
     }
     if (!form.startDate || !form.endDate) {
-      toast.error('Вкажіть період дії акції');
+      toast.error(t('admin.promotions.period'));
       return;
     }
 
@@ -189,9 +190,9 @@ export default function PromotionsPage() {
   return (
     <>
       <PageHeader
-        title="Акції"
-        description="Керування промокодами та спеціальними пропозиціями"
-        action={{ label: 'Додати акцію', onClick: openCreate }}
+        title={t('admin.promotions.title')}
+        description=""
+        action={{ label: t('admin.promotions.create'), onClick: openCreate }}
       />
 
       {loading ? (
@@ -201,21 +202,21 @@ export default function PromotionsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Назва</TableHead>
-                <TableHead>Код</TableHead>
-                <TableHead>Тип</TableHead>
-                <TableHead>Значення</TableHead>
-                <TableHead>Період</TableHead>
-                <TableHead>Статус</TableHead>
-                <TableHead>Використання</TableHead>
-                <TableHead className="text-right">Дії</TableHead>
+                <TableHead>{t('admin.promotions.name')}</TableHead>
+                <TableHead>{t('admin.promotions.code')}</TableHead>
+                <TableHead>{t('admin.promotions.type')}</TableHead>
+                <TableHead>{t('admin.promotions.value')}</TableHead>
+                <TableHead>{t('admin.promotions.period')}</TableHead>
+                <TableHead>{t('admin.promotions.status')}</TableHead>
+                <TableHead>{t('admin.promotions.usedCount')}</TableHead>
+                <TableHead className="text-right">{t('common.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {promotions.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                    Немає акцій
+                    {t('common.noData')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -223,7 +224,7 @@ export default function PromotionsPage() {
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.name}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {p.code || 'Авто'}
+                      {p.code || '—'}
                     </TableCell>
                     <TableCell>
                       <PromotionTypeBadge type={p.type} />
@@ -242,11 +243,11 @@ export default function PromotionsPage() {
                       <div className="flex items-center justify-end gap-1">
                         <Button variant="ghost" size="icon" onClick={() => openEdit(p)}>
                           <Pencil className="h-4 w-4" />
-                          <span className="sr-only">Редагувати</span>
+                          <span className="sr-only">{t('common.edit')}</span>
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(p)}>
                           <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Видалити</span>
+                          <span className="sr-only">{t('common.delete')}</span>
                         </Button>
                       </div>
                     </TableCell>
@@ -262,19 +263,19 @@ export default function PromotionsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Редагувати акцію' : 'Нова акція'}</DialogTitle>
+            <DialogTitle>{editingId ? t('admin.promotions.edit') : t('admin.promotions.create')}</DialogTitle>
             <DialogDescription>
-              {editingId ? 'Змініть параметри акції та збережіть' : 'Заповніть дані для створення нової акції'}
+              {editingId ? t('admin.promotions.edit') : t('admin.promotions.create')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             {/* Code */}
             <div className="grid gap-2">
-              <Label htmlFor="promo-code">Промокод</Label>
+              <Label htmlFor="promo-code">{t('admin.promotions.code')}</Label>
               <Input
                 id="promo-code"
-                placeholder="Залиште порожнім для авто-застосування"
+                placeholder={t('admin.promotions.code')}
                 value={form.code}
                 onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
               />
@@ -283,7 +284,7 @@ export default function PromotionsPage() {
             {/* Name */}
             <div className="grid gap-2">
               <Label htmlFor="promo-name">
-                Назва <span className="text-destructive">*</span>
+                {t('admin.promotions.name')} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="promo-name"
@@ -294,7 +295,7 @@ export default function PromotionsPage() {
 
             {/* Description */}
             <div className="grid gap-2">
-              <Label htmlFor="promo-desc">Опис</Label>
+              <Label htmlFor="promo-desc">{t('admin.promotions.description')}</Label>
               <Textarea
                 id="promo-desc"
                 value={form.description}
@@ -305,7 +306,7 @@ export default function PromotionsPage() {
 
             {/* Type */}
             <div className="grid gap-2">
-              <Label htmlFor="promo-type">Тип</Label>
+              <Label htmlFor="promo-type">{t('admin.promotions.type')}</Label>
               <Select
                 value={form.type}
                 onValueChange={(v) =>
@@ -316,9 +317,9 @@ export default function PromotionsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {promotionTypes.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
+                  {promotionTypes.map((pt) => (
+                    <SelectItem key={pt.value} value={pt.value}>
+                      {pt.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -343,7 +344,7 @@ export default function PromotionsPage() {
 
             {/* Min Order */}
             <div className="grid gap-2">
-              <Label htmlFor="promo-min-order">Мінімальний чек (₴)</Label>
+              <Label htmlFor="promo-min-order">{t('admin.promotions.minOrder')}</Label>
               <Input
                 id="promo-min-order"
                 type="number"
@@ -355,12 +356,12 @@ export default function PromotionsPage() {
 
             {/* Max Uses */}
             <div className="grid gap-2">
-              <Label htmlFor="promo-max-uses">Макс. використань</Label>
+              <Label htmlFor="promo-max-uses">{t('admin.promotions.maxUses')}</Label>
               <Input
                 id="promo-max-uses"
                 type="number"
                 min={0}
-                placeholder="Без обмежень"
+                placeholder="∞"
                 value={form.maxUses || ''}
                 onChange={(e) => setForm((f) => ({ ...f, maxUses: e.target.value }))}
               />
@@ -368,7 +369,7 @@ export default function PromotionsPage() {
 
             {/* Start Date */}
             <div className="grid gap-2">
-              <Label htmlFor="promo-start">Дата початку</Label>
+              <Label htmlFor="promo-start">{t('admin.promotions.startDate')}</Label>
               <Input
                 id="promo-start"
                 type="date"
@@ -379,7 +380,7 @@ export default function PromotionsPage() {
 
             {/* End Date */}
             <div className="grid gap-2">
-              <Label htmlFor="promo-end">Дата закінчення</Label>
+              <Label htmlFor="promo-end">{t('admin.promotions.endDate')}</Label>
               <Input
                 id="promo-end"
                 type="date"
@@ -390,7 +391,7 @@ export default function PromotionsPage() {
 
             {/* Status */}
             <div className="grid gap-2">
-              <Label htmlFor="promo-status">Статус</Label>
+              <Label htmlFor="promo-status">{t('admin.promotions.status')}</Label>
               <Select
                 value={form.status}
                 onValueChange={(v) => setForm((f) => ({ ...f, status: v as PromotionStatus }))}
@@ -411,10 +412,10 @@ export default function PromotionsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Скасувати
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? 'Збереження…' : editingId ? 'Зберегти' : 'Створити'}
+              {saving ? t('common.loading') : editingId ? t('common.save') : t('common.create')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -424,9 +425,9 @@ export default function PromotionsPage() {
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Видалити акцію?"
-        description={`Ви впевнені, що хочете видалити акцію «${deleteTarget?.name}»? Цю дію неможливо скасувати.`}
-        confirmLabel="Видалити"
+        title={t('admin.promotions.deleteConfirm')}
+        description={`«${deleteTarget?.name}»`}
+        confirmLabel={t('common.delete')}
         onConfirm={handleDelete}
         variant="destructive"
       />

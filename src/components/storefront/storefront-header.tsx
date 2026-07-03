@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useAuth, useBrand } from '@/lib/store'
+import { useT } from '@/i18n'
+import LanguageSwitcher from '@/i18n/LanguageSwitcher'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -23,6 +25,7 @@ export default function StorefrontHeader({
   onAuthOpen,
   onNavigate,
 }: StorefrontHeaderProps) {
+  const t = useT()
   const brand = useBrand((s) => s.brand)
   const { isAuthenticated, user, logout } = useAuth()
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -57,7 +60,7 @@ export default function StorefrontHeader({
           className="text-lg font-bold tracking-tight transition-colors hover:opacity-80"
           style={{ color: primaryColor }}
         >
-          <span className="sm:inline hidden">{brand?.name || 'Заклад'}</span>
+          <span className="sm:inline hidden">{brand?.name || t('header.defaultBrand')}</span>
           <span className="sm:hidden text-xl">🍽️</span>
         </button>
 
@@ -71,7 +74,7 @@ export default function StorefrontHeader({
               >
                 <User className="size-4" />
                 <span className="hidden sm:inline">
-                  {user?.firstName || 'Профіль'}
+                  {user?.firstName || t('header.profile')}
                 </span>
                 <ChevronDown className="size-3.5 opacity-60" />
               </button>
@@ -86,7 +89,7 @@ export default function StorefrontHeader({
                     className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm transition-colors hover:bg-accent"
                   >
                     <User className="size-4" />
-                    Профіль
+                    {t('header.profile')}
                   </button>
                   <button
                     onClick={() => {
@@ -96,7 +99,7 @@ export default function StorefrontHeader({
                     className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm transition-colors hover:bg-accent"
                   >
                     <ClipboardList className="size-4" />
-                    Замовлення
+                    {t('header.orders')}
                   </button>
                   <div className="my-1 h-px bg-border" />
                   <button
@@ -104,7 +107,7 @@ export default function StorefrontHeader({
                     className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm text-destructive transition-colors hover:bg-accent"
                   >
                     <LogOut className="size-4" />
-                    Вийти
+                    {t('header.logout')}
                   </button>
                 </div>
               )}
@@ -117,9 +120,11 @@ export default function StorefrontHeader({
               className="gap-1.5"
             >
               <User className="size-4" />
-              <span className="hidden sm:inline">Увійти</span>
+              <span className="hidden sm:inline">{t('header.login')}</span>
             </Button>
           )}
+
+          <LanguageSwitcher />
 
           {/* Cart button */}
           <Button
@@ -127,7 +132,7 @@ export default function StorefrontHeader({
             size="icon"
             className="relative"
             onClick={() => onNavigate('menu')}
-            aria-label="Кошик"
+            aria-label={t('header.cart')}
           >
             <ShoppingCart className="size-5" />
             {cartCount > 0 && (

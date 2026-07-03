@@ -33,6 +33,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { useT } from '@/i18n';
 
 // ── Default analytics (all zeros / empty arrays) ──────────────────────
 const defaultAnalytics: Analytics = {
@@ -54,11 +55,6 @@ function formatDateLabel(dateStr: string): string {
   const d = new Date(dateStr);
   return d.toLocaleDateString('uk-UA', { day: 'numeric', month: 'short' });
 }
-
-const orderTypeLabel: Record<OrderType, string> = {
-  delivery: 'Доставка',
-  pickup: 'Самовивіз',
-};
 
 // ── Metric card skeleton ──────────────────────────────────────────────
 function MetricCardSkeleton() {
@@ -103,7 +99,6 @@ function MetricCard({ label, value, icon, trend }: MetricCardProps) {
             <span className={trend.up ? 'text-emerald-600' : 'text-red-600'}>
               {trend.value}
             </span>
-            <span>за минулий тиждень</span>
           </div>
         )}
       </CardContent>
@@ -146,7 +141,13 @@ function ChartTooltipContent({ active, payload, label, isRevenue = false }: {
 
 // ── Page component ────────────────────────────────────────────────────
 export default function AdminAnalyticsPage() {
+  const t = useT();
   const { data, loading } = useAdminApi<Analytics>('/api/admin/analytics', defaultAnalytics);
+
+  const orderTypeLabel: Record<OrderType, string> = {
+    delivery: t('checkout.delivery'),
+    pickup: t('checkout.pickup'),
+  };
 
   const avgCheck = data.orders.today > 0 ? Math.round(data.revenue.today / data.orders.today) : 0;
   const recentOrders = data.recentOrders.slice(0, 5);
@@ -201,32 +202,31 @@ export default function AdminAnalyticsPage() {
     <div className="space-y-6">
       {/* Page heading */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Аналітика</h1>
-        <p className="text-muted-foreground">Огляд ключових показників вашого ресторану</p>
+        <h1 className="text-2xl font-bold tracking-tight">{t('admin.analytics.title')}</h1>
       </div>
 
       {/* Metric cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          label="Замовлень сьогодні"
+          label={t('admin.analytics.totalOrders')}
           value={String(data.orders.today)}
           icon={<ShoppingCart className="h-5 w-5" />}
           trend={{ value: '+12.5%', up: true }}
         />
         <MetricCard
-          label="Виручка сьогодні"
+          label={t('admin.analytics.revenue')}
           value={formatUAH(data.revenue.today)}
           icon={<DollarSign className="h-5 w-5" />}
           trend={{ value: '+8.3%', up: true }}
         />
         <MetricCard
-          label="Середній чек"
+          label={t('admin.analytics.avgCheck')}
           value={formatUAH(avgCheck)}
           icon={<Receipt className="h-5 w-5" />}
           trend={{ value: '-2.1%', up: false }}
         />
         <MetricCard
-          label="Замовлень за тиждень"
+          label={t('admin.analytics.activePromos')}
           value={String(data.orders.week)}
           icon={<CalendarDays className="h-5 w-5" />}
           trend={{ value: '+5.7%', up: true }}
@@ -238,8 +238,7 @@ export default function AdminAnalyticsPage() {
         {/* Orders by day — Line chart */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Закази по днях</CardTitle>
-            <CardDescription>Кількість замовлень за останні 14 днів</CardDescription>
+            <CardTitle className="text-base">{t('admin.analytics.ordersByDay')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[280px]">
@@ -269,7 +268,6 @@ export default function AdminAnalyticsPage() {
                   <Line
                     type="monotone"
                     dataKey="count"
-                    name="Замовлення"
                     stroke={lineColor}
                     strokeWidth={2}
                     dot={{ r: 4, fill: lineColor }}
@@ -284,8 +282,7 @@ export default function AdminAnalyticsPage() {
         {/* Revenue by category — Bar chart */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Виручка по категоріях</CardTitle>
-            <CardDescription>Розподіл виручки за категоріями товарів</CardDescription>
+            <CardTitle className="text-base">{t('admin.analytics.revenueByCategory')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[280px]">
@@ -314,7 +311,7 @@ export default function AdminAnalyticsPage() {
                       <ChartTooltipContent isRevenue />
                     }
                   />
-                  <Bar dataKey="revenue" name="Виручка" radius={[0, 4, 4, 0]}>
+                  <Bar dataKey="revenue" radius={[0, 4, 4, 0]}>
                     {(data.revenueByCategory ?? []).map((_, index) => (
                       <Cell
                         key={`bar-${index}`}
@@ -332,18 +329,17 @@ export default function AdminAnalyticsPage() {
       {/* Recent orders table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Останні замовлення</CardTitle>
-          <CardDescription>Останні 5 замовлень у системі</CardDescription>
+          <CardTitle className="text-base">{t('admin.analytics.recentOrders')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Номер замовлення</TableHead>
-                <TableHead>Філія</TableHead>
-                <TableHead>Статус</TableHead>
-                <TableHead className="text-right">Сума</TableHead>
-                <TableHead>Тип</TableHead>
+                <TableHead>{t('admin.ordersAdmin.orderNumber')}</TableHead>
+                <TableHead>{t('admin.ordersAdmin.branch')}</TableHead>
+                <TableHead>{t('common.status')}</TableHead>
+                <TableHead className="text-right">{t('admin.ordersAdmin.amount')}</TableHead>
+                <TableHead>{t('common.all')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -369,7 +365,7 @@ export default function AdminAnalyticsPage() {
               {recentOrders.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                    Немає замовлень
+                    {t('common.noData')}
                   </TableCell>
                 </TableRow>
               )}

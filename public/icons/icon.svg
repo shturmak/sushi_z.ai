@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#e11d48"/>
+  <circle cx="256" cy="256" r="160" fill="none" stroke="#fff" stroke-width="32"/>
+  <!-- Sushi roll shape -->
+  <rect x="156" y="210" width="200" height="92" rx="46" fill="#fff"/>
+  <rect x="196" y="238" width="120" height="36" rx="8" fill="#e11d48" opacity="0.6"/>
+  <!-- Chopsticks -->
+  <line x1="340" y1="140" x2="400" y2="380" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <line x1="360" y1="140" x2="420" y2="380" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <!-- Nori wrap detail -->
+  <path d="M176 256 Q256 220 336 256" fill="none" stroke="#e11d48" stroke-width="4" opacity="0.4"/>
+</svg>

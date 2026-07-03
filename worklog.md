@@ -261,3 +261,129 @@ Work Log:
 Stage Summary:
 - All list endpoints return consistent paginated response
 - Admin frontend uses useAdminPaginatedApi for auto-unwrap
+---
+Task ID: 5.1-storefront
+Agent: Storefront i18n Agent
+Task: Replace hardcoded Ukrainian strings in 7 storefront components with i18n
+
+Work Log:
+- Read all 7 storefront component files and i18n setup (useT hook, LanguageSwitcher)
+- Updated brand-picker.tsx: added useT import, replaced 3 hardcoded strings (title, subtitle, noBrands)
+- Updated storefront-header.tsx: added useT import, LanguageSwitcher import (default export), replaced 6 hardcoded strings (profile, orders, logout, login, cart, defaultBrand), inserted LanguageSwitcher component before cart button
+- Updated auth-dialog.tsx: added useT import, replaced 12 hardcoded strings (dialogTitle, dialogDesc, loginTab, registerTab, email, password, phone, firstName, lastName, registerButton, and 4 placeholders)
+- Updated menu-view.tsx: added useT import to both MenuContent and MenuView components, replaced 9 hardcoded strings (selectBranch, emptyMenu, emptyMenuHint, emptyCategory, add, notAvailable, cart.title, cart.empty, cart.checkout, common.total), refactored pluralizeItems to accept t parameter and use cart.items_one/few/many keys
+- Updated checkout-view.tsx: full rewrite, moved STEPS array inside component to use t() calls, replaced all ~30 hardcoded strings including step labels, delivery/pickup titles and descriptions, address field labels, promo labels, payment method labels, bonus labels, summary labels, navigation buttons
+- Updated orders-view.tsx: moved STATUS_MAP and PAYMENT_LABELS inside component body (required for t() access), moved getTimeline function inside component, replaced all ~20 hardcoded strings including status labels, payment labels, timeline labels, empty states, action buttons, summary labels
+- Updated profile-view.tsx: moved TIER_CONFIG and TX_TYPE_LABELS inside component body, replaced all ~12 hardcoded strings including title, loyalty labels, tier labels, transaction type labels, logout button
+- Ran bun run lint: 0 errors, 1 pre-existing warning (unrelated to changes)
+
+Stage Summary:
+- All 7 storefront components now use useT() hook for i18n
+- No hardcoded Ukrainian strings remain in storefront components
+- LanguageSwitcher added to storefront header
+- STATUS_MAP, PAYMENT_LABELS, TIER_CONFIG, TX_TYPE_LABELS moved inside component bodies for t() access
+- pluralizeItems refactored to accept t parameter for locale-aware pluralization
+- Lint passes with no new errors
+---
+Task ID: 5.1-admin
+Agent: Admin i18n Agent
+Task: Replace hardcoded Ukrainian strings in 6 admin pages + sidebar with i18n
+
+Work Log:
+- Read i18n system (useT hook, uk.ts locale with ~100 admin keys) and all 7 target files
+- Updated src/app/admin/page.tsx (Analytics): added useT import, moved orderTypeLabel inside component body, replaced page title, 4 KPI card labels, 2 chart titles, table headers (orderNumber, branch, status, amount), recent orders title, noData empty state, order type labels (delivery/pickup)
+- Updated src/app/admin/branches/page.tsx: added useT to both BranchFormDialog and BranchesPage, replaced dialog title/description, 8 form labels (name, slug, address, phone, email, schedule, description, isOpen), button labels (cancel, save), table headers (name, address, status, orders, actions), search placeholder, action aria-labels, delete confirm dialog, empty state
+- Updated src/app/admin/menu/categories/page.tsx: added useT import, replaced page header title/create label, table headers (name, slug, products, actions), dialog title, form labels (name, slug, description), button labels (cancel, save, create), delete confirm, empty state
+- Updated src/app/admin/menu/products/page.tsx: added useT import, replaced page header title/create label, filter labels (category, searchPlaceholder), table headers (category, name, price, weight, available, actions), dialog title, form labels (category, name, slug, price, weight, calories, available, description), option group labels (optionGroups, optionGroupName, optionMaxChoices, optionRequired, optionName), button labels (addGroup, addOption, cancel, save, create), delete confirm, empty state
+- Updated src/app/admin/orders/page.tsx: moved STATUS_OPTIONS and STATUS_LABELS inside component body (required for t() access), added useT to both OrdersPage and OrderDetailDialog, replaced page header, status filter options (all 7 statuses + all), branch filter label, table headers (orderNumber, branch, date, status, amount, payment, actions), order type labels, noOrders empty state, detail dialog title, info row labels (branch, payment, items, amount, total, address, customer, note), status timeline labels (all 7 statuses), changeStatus heading, status change button labels, order detail section headings
+- Updated src/app/admin/promotions/page.tsx: moved promotionTypes and promotionStatuses arrays inside component body, added useT import, replaced page header, table headers (name, code, type, value, period, status, usedCount, actions), dialog title/description, form labels (code, name, description, type, value, minOrder, maxUses, startDate, endDate, status), type/status select options, button labels (cancel, save, create), delete confirm, sr-only labels, empty state, toast messages
+- Updated src/components/admin/admin-sidebar.tsx: moved navItems array inside component body, replaced all 7 nav labels (analytics, branches, menu, categories, products, orders, promotions) with t() calls
+- Removed unused useAdminApi import from products page
+- Ran bun run lint: 0 errors, 1 pre-existing warning (unrelated)
+
+Stage Summary:
+- All 6 admin page components + admin sidebar now use useT() hook for i18n
+- STATUS_OPTIONS, STATUS_LABELS, promotionTypes, promotionStatuses moved inside component bodies for t() access
+- orderTypeLabel moved inside analytics component for t() access
+- navItems moved inside AdminSidebar component for t() access
+- ~150 hardcoded Ukrainian strings replaced with i18n t() calls across 7 files
+- Lint passes with no new errors
+---
+Task ID: 5.4
+Agent: Telegram Bot Agent
+Task: Create Telegram bot mini-service for food ordering
+
+Work Log:
+- Read Prisma schema to understand full data model (Brand, Branch, Category, Product, Order, etc.)
+- Created `mini-services/telegram-bot/package.json` with grammy ^1.35.0 and @prisma/client ^6.11.1
+- Created `mini-services/telegram-bot/.env.example` with TELEGRAM_BOT_TOKEN placeholder
+- Created `mini-services/telegram-bot/index.ts` (~465 lines) with complete bot logic:
+  - /start: shows active brands as inline keyboard buttons
+  - Brand selection callback: shows open branches for selected brand
+  - Branch selection callback: shows menu categories (brand-wide + branch-specific)
+  - Category selection callback: shows products with prices and "Add to cart" buttons
+  - Add to cart: in-memory cart with quantity tracking, shows running total
+  - /cart: displays cart items with quantities, per-item totals, and grand total
+  - /checkout: asks delivery vs pickup via inline buttons, creates pending Order in DB
+  - /orders: shows recent orders with status labels (Ukrainian), uses note field as Telegram chatId tag
+  - /help: lists all available commands
+  - In-memory session store (Map<chatId, {brandId, branchId, cart}>)
+  - All UI text in Ukrainian
+  - Proper null safety for ctx.chat in callback query handler
+  - Bot gracefully exits if TELEGRAM_BOT_TOKEN not set
+- Installed dependencies: grammy@1.44.0, @prisma/client@6.19.3
+
+Stage Summary:
+- Standalone Bun mini-service at `mini-services/telegram-bot/` (port 3004)
+- Full ordering flow: brand → branch → category → products → cart → checkout
+- Orders created as "new" status in shared SQLite database, tagged with Telegram chatId
+- Type-safe with grammy's TypeScript-first API
+
+---
+Task ID: 5.3
+Agent: SEO Agent
+Task: Add SEO support (dynamic meta tags, Open Graph, sitemap)
+
+Work Log:
+- Updated `src/app/layout.tsx` metadata: enhanced title, added keywords array, authors, openGraph (type, locale, siteName, title, description), twitter (card, title, description)
+- Created `src/app/sitemap.ts` — Next.js dynamic sitemap with entries for homepage (daily, priority 1) and admin (weekly, priority 0.3), using NEXT_PUBLIC_APP_URL env with fallback
+- Created `src/app/robots.ts` — Next.js robots.txt allowing /, disallowing /admin/ and /api/, pointing to sitemap.xml
+- Added `notFound` i18n keys (title, description, goHome) to all 3 locale files (uk, en, ru)
+- Created `src/app/not-found.tsx` — client component 404 page using useT() hook, styled with large "404" text, title, description, and Button linking to homepage
+- Verified: all changed/created files pass ESLint with zero errors (pre-existing error in public/sw.js is unrelated)
+
+Stage Summary:
+- SEO metadata (keywords, authors, Open Graph, Twitter cards) added to root layout
+- Dynamic sitemap.xml and robots.txt generated via Next.js file conventions
+- Custom 404 page with i18n support (uk/ru/en) using shadcn/ui Button
+- All files lint-clean
+---
+Task ID: 5.2
+Agent: PWA Agent
+Task: Add PWA support (manifest, service worker, offline menu)
+
+Work Log:
+- Created `public/manifest.json` — Web App Manifest with name, theme_color (#e11d48), standalone display, portrait orientation, 3 icon entries (192, 512, maskable 512)
+- Created `public/icons/icon.svg` — SVG app icon with red (#e11d48) rounded square background, white sushi roll and chopsticks design
+- Created `public/icons/icon-192.png` and `public/icons/icon-512.png` — minimal placeholder PNG icons (replace with real icons for production)
+- Created `public/sw.js` — Plain JS service worker (~120 lines) with 3 caching strategies:
+  - Cache-first: static assets (CSS, JS, fonts, icons, /_next/static/)
+  - Stale-while-revalidate: /api/* requests (serves cached, updates in background, falls back to cache when offline)
+  - Network-first: navigation requests (fetches from network, falls back to cached page)
+  - Pre-caches critical assets on install (/, /manifest.json, /icons/icon.svg)
+  - Cleans old caches on activate, calls skipWaiting + clients.claim
+- Created `src/components/pwa/ServiceWorkerRegistrar.tsx` — "use client" component that registers /sw.js on mount, listens for updatefound event, shows "Нова версія доступна" prompt with "Перезавантажити" / "Пізніше" buttons, sends SKIP_WAITING message on reload
+- Updated `src/app/layout.tsx`:
+  - Added `Viewport` export with themeColor, width, initialScale, maximumScale
+  - Updated icons metadata to reference local /icons/icon-192.png and icon-512.png (plus apple icon)
+  - Added `manifest: "/manifest.json"` to metadata
+  - Added `appleWebApp` config (capable, statusBarStyle, title)
+  - Imported and rendered `<ServiceWorkerRegistrar />` inside ThemeProvider
+- Updated `eslint.config.mjs` ignores to exclude `public/**` from ESLint (plain JS SW was being parsed by TypeScript parser)
+
+Stage Summary:
+- PWA manifest with app icons and theme configured
+- Service worker with 3-tier caching (cache-first for static, stale-while-revalidate for API, network-first for navigation)
+- Offline menu support via cached API responses
+- Update prompt shown when new SW version detected
+- `bun run lint` passes with 0 errors

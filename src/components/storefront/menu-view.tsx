@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useBrand, useAuth, API } from '@/lib/store'
+import { useT } from '@/i18n'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -106,6 +107,7 @@ function MenuContent({
   primaryColor: string
   onAddToCart: (product: Product) => void
 }) {
+  const t = useT()
   const [categories, setCategories] = useState<Category[]>([])
   const [activeCategory, setActiveCategory] = useState<string>('')
   const [loading, setLoading] = useState(true)
@@ -151,8 +153,8 @@ function MenuContent({
   if (categories.length === 0) {
     return (
       <div className="py-20 text-center text-muted-foreground">
-        <p className="text-lg">Меню поки порожнє</p>
-        <p className="text-sm mt-1">Зачекайте, коли додадуть страви</p>
+        <p className="text-lg">{t('menu.emptyMenu')}</p>
+        <p className="text-sm mt-1">{t('menu.emptyMenuHint')}</p>
       </div>
     )
   }
@@ -182,7 +184,7 @@ function MenuContent({
         <section key={cat.id} id={`cat-${cat.id}`} className="mb-8 scroll-mt-20">
           <h2 className="mb-4 text-xl font-bold">{cat.name}</h2>
           {cat.products.length === 0 && (
-            <p className="text-sm text-muted-foreground">Категорія порожня</p>
+            <p className="text-sm text-muted-foreground">{t('menu.emptyCategory')}</p>
           )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {cat.products.map((product) => (
@@ -231,11 +233,11 @@ function MenuContent({
                           className="text-white"
                         >
                           <Plus className="size-4" />
-                          Додати
+                          {t('menu.add')}
                         </Button>
                       ) : (
                         <span className="text-sm text-muted-foreground">
-                          Немає в наявності
+                          {t('menu.notAvailable')}
                         </span>
                       )}
                     </div>
@@ -253,6 +255,7 @@ function MenuContent({
 // ── Main Component ───────────────────────────────────────
 
 export default function MenuView({ onCheckout, onCartCountChange }: MenuViewProps) {
+  const t = useT()
   const brand = useBrand((s) => s.brand)
   const isAuthenticated = useAuth((s) => s.isAuthenticated)
   const primaryColor = brand?.primaryColor || '#e11d48'
@@ -362,7 +365,7 @@ export default function MenuView({ onCheckout, onCartCountChange }: MenuViewProp
         <Store className="size-4 text-muted-foreground shrink-0" />
         <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Оберіть філію" />
+            <SelectValue placeholder={t('menu.selectBranch')} />
           </SelectTrigger>
           <SelectContent>
             {branches.map((b) => (
@@ -388,11 +391,11 @@ export default function MenuView({ onCheckout, onCartCountChange }: MenuViewProp
       <Sheet open={cartOpen} onOpenChange={setCartOpen}>
         <SheetContent side="right" className="flex w-full flex-col sm:max-w-md">
           <SheetHeader>
-            <SheetTitle>Кошик</SheetTitle>
+            <SheetTitle>{t('cart.title')}</SheetTitle>
             <SheetDescription>
               {cart?.totalItems
-                ? `${cart.totalItems} ${pluralizeItems(cart.totalItems)}`
-                : 'Кошик порожній'}
+                ? `${cart.totalItems} ${pluralizeItems(t, cart.totalItems)}`
+                : t('cart.empty')}
             </SheetDescription>
           </SheetHeader>
 
@@ -452,7 +455,7 @@ export default function MenuView({ onCheckout, onCartCountChange }: MenuViewProp
 
               <SheetFooter className="flex-col gap-3 pt-2">
                 <div className="flex w-full items-center justify-between text-lg font-bold">
-                  <span>Разом:</span>
+                  <span>{t('common.total')}</span>
                   <span>{Math.round(cartSubtotal)} ₴</span>
                 </div>
                 <Button
@@ -463,7 +466,7 @@ export default function MenuView({ onCheckout, onCartCountChange }: MenuViewProp
                     onCheckout()
                   }}
                 >
-                  Оформити замовлення
+                  {t('cart.checkout')}
                 </Button>
               </SheetFooter>
             </>
@@ -471,7 +474,7 @@ export default function MenuView({ onCheckout, onCartCountChange }: MenuViewProp
             <div className="flex flex-1 items-center justify-center text-muted-foreground">
               <div className="text-center">
                 <ShoppingCart className="mx-auto mb-3 size-10 opacity-40" />
-                <p>Кошик порожній</p>
+                <p>{t('cart.empty')}</p>
               </div>
             </div>
           )}
@@ -485,7 +488,7 @@ export default function MenuView({ onCheckout, onCartCountChange }: MenuViewProp
             <div className="flex items-center gap-2">
               <ShoppingCart className="size-5" />
               <span className="text-sm font-medium">
-                {cart.totalItems} {pluralizeItems(cart.totalItems)}
+                {cart.totalItems} {pluralizeItems(t, cart.totalItems)}
               </span>
             </div>
             <div className="flex items-center gap-4">
@@ -495,7 +498,7 @@ export default function MenuView({ onCheckout, onCartCountChange }: MenuViewProp
                 style={{ backgroundColor: primaryColor }}
                 onClick={() => setCartOpen(true)}
               >
-                Кошик
+                {t('cart.title')}
               </Button>
             </div>
           </div>
@@ -507,10 +510,10 @@ export default function MenuView({ onCheckout, onCartCountChange }: MenuViewProp
 
 // ── Helpers ──────────────────────────────────────────────
 
-function pluralizeItems(n: number): string {
+function pluralizeItems(t: (key: string) => string, n: number): string {
   const mod10 = n % 10
   const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return 'товар'
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'товари'
-  return 'товарів'
+  if (mod10 === 1 && mod100 !== 11) return t('cart.items_one')
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return t('cart.items_few')
+  return t('cart.items_many')
 }

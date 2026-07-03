@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useBrand, useAuth, API } from '@/lib/store'
+import { useT } from '@/i18n'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -41,25 +42,24 @@ interface CheckoutViewProps {
   onBack: () => void
 }
 
-// ── Steps ────────────────────────────────────────────────
-
-const STEPS = [
-  'Тип замовлення',
-  'Адреса',
-  'Промокод',
-  'Оплата',
-  'Бонуси',
-  'Підтвердження',
-] as const
-
-const TOTAL_STEPS = STEPS.length
-
 // ── Component ────────────────────────────────────────────
 
 export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewProps) {
+  const t = useT()
   const brand = useBrand((s) => s.brand)
   const isAuthenticated = useAuth((s) => s.isAuthenticated)
   const primaryColor = brand?.primaryColor || '#e11d48'
+
+  const STEPS = [
+    t('checkout.steps.0'),
+    t('checkout.steps.1'),
+    t('checkout.steps.2'),
+    t('checkout.steps.3'),
+    t('checkout.steps.4'),
+    t('checkout.steps.5'),
+  ] as const
+
+  const TOTAL_STEPS = STEPS.length
 
   const [step, setStep] = useState(0)
 
@@ -218,7 +218,7 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
           <Button variant="ghost" size="icon" onClick={onBack} className="mr-2">
             <ChevronLeft className="size-5" />
           </Button>
-          <h1 className="text-xl font-bold">Оформлення замовлення</h1>
+          <h1 className="text-xl font-bold">{t('checkout.title')}</h1>
           <div className="w-9" />
         </div>
         <div className="flex gap-1">
@@ -248,9 +248,9 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
           >
             <Truck className="size-8 shrink-0" />
             <div className="text-left">
-              <p className="font-semibold">Доставка</p>
+              <p className="font-semibold">{t('checkout.delivery')}</p>
               <p className="text-sm text-muted-foreground">
-                Доставимо до вашої адреси
+                {t('checkout.deliveryDesc')}
               </p>
             </div>
           </button>
@@ -264,9 +264,9 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
           >
             <ShoppingBag className="size-8 shrink-0" />
             <div className="text-left">
-              <p className="font-semibold">Самовивіз</p>
+              <p className="font-semibold">{t('checkout.pickup')}</p>
               <p className="text-sm text-muted-foreground">
-                Заберете самостійно з філії
+                {t('checkout.pickupDesc')}
               </p>
             </div>
           </button>
@@ -279,7 +279,7 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
           {orderType === 'delivery' ? (
             <>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Вулиця *</label>
+                <label className="text-sm font-medium">{t('checkout.street')} *</label>
                 <Input
                   placeholder="вул. Шевченка"
                   value={street}
@@ -288,7 +288,7 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Будинок</label>
+                  <label className="text-sm font-medium">{t('checkout.building')}</label>
                   <Input
                     placeholder="12"
                     value={building}
@@ -296,7 +296,7 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Квартира</label>
+                  <label className="text-sm font-medium">{t('checkout.apartment')}</label>
                   <Input
                     placeholder="45"
                     value={apartment}
@@ -306,7 +306,7 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Поверх</label>
+                  <label className="text-sm font-medium">{t('checkout.floor')}</label>
                   <Input
                     placeholder="3"
                     value={floor}
@@ -314,7 +314,7 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Під&apos;їзд</label>
+                  <label className="text-sm font-medium">{t('checkout.entrance')}</label>
                   <Input
                     placeholder="2"
                     value={entrance}
@@ -323,9 +323,9 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Коментар</label>
+                <label className="text-sm font-medium">{t('checkout.comment')}</label>
                 <Input
-                  placeholder="Код домофону, інструкція..."
+                  placeholder={t('checkout.commentPlaceholder')}
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                 />
@@ -351,15 +351,15 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
       {step === 2 && (
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Промокод</label>
+            <label className="text-sm font-medium">{t('checkout.promoCode')}</label>
             <div className="flex gap-2">
               <Input
-                placeholder="Введіть промокод"
+                placeholder={t('checkout.promoPlaceholder')}
                 value={promoCode}
                 onChange={(e) => setPromoCode(e.target.value)}
               />
               <Button variant="outline" onClick={handleApplyPromo}>
-                Застосувати
+                {t('checkout.applyPromo')}
               </Button>
             </div>
             {promoError && (
@@ -367,7 +367,7 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
             )}
             {promoDiscount > 0 && (
               <p className="text-sm font-medium" style={{ color: primaryColor }}>
-                Знижка: {Math.round(promoDiscount)} ₴
+                {t('common.discount')}: {Math.round(promoDiscount)} ₴
               </p>
             )}
           </div>
@@ -378,9 +378,9 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
       {step === 3 && (
         <div className="space-y-3">
           {[
-            { value: 'card' as const, label: 'Картка', icon: CreditCard },
-            { value: 'cash' as const, label: 'Готівка', icon: Banknote },
-            { value: 'bonus' as const, label: 'Бонуси', icon: Gift },
+            { value: 'card' as const, label: t('checkout.paymentCard'), icon: CreditCard },
+            { value: 'cash' as const, label: t('checkout.paymentCash'), icon: Banknote },
+            { value: 'bonus' as const, label: t('checkout.paymentBonus'), icon: Gift },
           ].map(({ value, label, icon: Icon }) => (
             <button
               key={value}
@@ -410,7 +410,7 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">
-                  Доступні бонуси:
+                  {t('checkout.availableBonuses')}
                 </span>
                 <span className="font-bold" style={{ color: primaryColor }}>
                   {Math.round(bonusBalance)} ₴
@@ -418,7 +418,7 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">
-                  Використати бонуси
+                  {t('checkout.useBonuses')}
                 </label>
                 <Input
                   type="number"
@@ -436,7 +436,7 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
                   }}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Максимум: {Math.round(Math.min(bonusBalance, subtotal))} ₴
+                  {t('checkout.maxBonuses')}: {Math.round(Math.min(bonusBalance, subtotal))} ₴
                 </p>
               </div>
             </CardContent>
@@ -449,28 +449,28 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
         <div className="space-y-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Деталі замовлення</CardTitle>
+              <CardTitle className="text-base">{t('checkout.details')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {/* Type */}
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Тип:</span>
+                <span className="text-muted-foreground">{t('checkout.type')}</span>
                 <span className="font-medium">
-                  {orderType === 'delivery' ? 'Доставка' : 'Самовивіз'}
+                  {orderType === 'delivery' ? t('checkout.delivery') : t('checkout.pickup')}
                 </span>
               </div>
 
               {/* Address */}
               {orderType === 'delivery' ? (
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Адреса:</span>
+                  <span className="text-muted-foreground">{t('checkout.address')}</span>
                   <span className="font-medium text-right max-w-[60%]">
                     {[street, building, apartment].filter(Boolean).join(', ')}
                   </span>
                 </div>
               ) : (
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Філія:</span>
+                  <span className="text-muted-foreground">{t('checkout.branch')}</span>
                   <span className="font-medium">{selectedBranch?.name}</span>
                 </div>
               )}
@@ -498,7 +498,7 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
 
               {/* Totals */}
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Підсумок:</span>
+                <span className="text-muted-foreground">{t('common.subtotal')}</span>
                 <span>{Math.round(subtotal)} ₴</span>
               </div>
               {deliveryFee > 0 && (
@@ -509,31 +509,31 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
               )}
               {discount > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
-                  <span>Знижка:</span>
+                  <span>{t('common.discount')}:</span>
                   <span>-{Math.round(discount)} ₴</span>
                 </div>
               )}
               {bonusToUse > 0 && (
                 <div className="flex justify-between text-sm text-amber-600">
-                  <span>Бонуси:</span>
+                  <span>{t('common.bonuses')}:</span>
                   <span>-{Math.round(bonusToUse)} ₴</span>
                 </div>
               )}
               <Separator />
               <div className="flex justify-between text-lg font-bold">
-                <span>Разом:</span>
+                <span>{t('common.total')}</span>
                 <span>{Math.round(total)} ₴</span>
               </div>
 
               {/* Payment method */}
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Оплата:</span>
+                <span className="text-muted-foreground">{t('checkout.payment')}</span>
                 <span className="font-medium">
                   {paymentMethod === 'card'
-                    ? 'Картка'
+                    ? t('checkout.paymentCard')
                     : paymentMethod === 'cash'
-                      ? 'Готівка'
-                      : 'Бонуси'}
+                      ? t('checkout.paymentCash')
+                      : t('checkout.paymentBonus')}
                 </span>
               </div>
 
@@ -554,7 +554,7 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
             onClick={() => setStep(step - 1)}
           >
             <ChevronLeft className="size-4" />
-            Назад
+            {t('common.back')}
           </Button>
         )}
         {step < TOTAL_STEPS - 1 && (
@@ -564,7 +564,7 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
             disabled={!canProceed()}
             onClick={() => setStep(step + 1)}
           >
-            Далі
+            {t('common.next')}
             <ChevronRight className="size-4" />
           </Button>
         )}
@@ -578,7 +578,7 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
             {submitting ? (
               <Loader2 className="size-4 animate-spin" />
             ) : null}
-            Підтвердити замовлення
+            {t('checkout.confirmOrder')}
           </Button>
         )}
       </div>

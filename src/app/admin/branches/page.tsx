@@ -29,6 +29,7 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table';
+import { useT } from '@/i18n';
 
 // ─── Ukrainian slug transliteration ────────────────────────────
 function slugify(text: string): string {
@@ -79,6 +80,7 @@ function BranchFormDialog({
   editingBranch: Branch | null;
   onSaved: () => void;
 }) {
+  const t = useT();
   const isEdit = editingBranch !== null;
   const [form, setForm] = useState<BranchFormData>(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -160,9 +162,9 @@ function BranchFormDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Редагувати філіал' : 'Новий філіал'}</DialogTitle>
+          <DialogTitle>{isEdit ? t('admin.branches.edit') : t('admin.branches.create')}</DialogTitle>
           <DialogDescription>
-            {isEdit ? 'Змініть дані філіалу та збережіть.' : 'Заповніть дані нового філіалу.'}
+            {isEdit ? t('admin.branches.edit') : t('admin.branches.create')}
           </DialogDescription>
         </DialogHeader>
 
@@ -171,18 +173,18 @@ function BranchFormDialog({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="branch-name">
-                Назва <span className="text-destructive">*</span>
+                {t('admin.branches.name')} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="branch-name"
-                placeholder="Суші Мастер Центр"
+                placeholder={t('admin.branches.name')}
                 value={form.name}
                 onChange={(e) => handleNameChange(e.target.value)}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="branch-slug">Slug</Label>
+              <Label htmlFor="branch-slug">{t('admin.branches.slug')}</Label>
               <Input
                 id="branch-slug"
                 placeholder="sushi-master-center"
@@ -195,11 +197,11 @@ function BranchFormDialog({
           {/* Address */}
           <div className="space-y-2">
             <Label htmlFor="branch-address">
-              Адреса <span className="text-destructive">*</span>
+              {t('admin.branches.address')} <span className="text-destructive">*</span>
             </Label>
             <Input
               id="branch-address"
-              placeholder="вул. Хрещатик 22, Київ"
+              placeholder={t('admin.branches.address')}
               value={form.address}
               onChange={(e) => updateField('address', e.target.value)}
               required
@@ -209,7 +211,7 @@ function BranchFormDialog({
           {/* Phone + Email */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="branch-phone">Телефон</Label>
+              <Label htmlFor="branch-phone">{t('admin.branches.phone')}</Label>
               <Input
                 id="branch-phone"
                 placeholder="+380 44 123 4567"
@@ -218,7 +220,7 @@ function BranchFormDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="branch-email">Email</Label>
+              <Label htmlFor="branch-email">{t('admin.branches.email')}</Label>
               <Input
                 id="branch-email"
                 type="email"
@@ -257,7 +259,7 @@ function BranchFormDialog({
 
           {/* Work Schedule (JSON textarea) */}
           <div className="space-y-2">
-            <Label htmlFor="branch-schedule">Графік роботи (JSON)</Label>
+            <Label htmlFor="branch-schedule">{t('admin.branches.schedule')} (JSON)</Label>
             <Textarea
               id="branch-schedule"
               rows={4}
@@ -270,11 +272,11 @@ function BranchFormDialog({
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="branch-desc">Опис</Label>
+            <Label htmlFor="branch-desc">{t('admin.branches.description')}</Label>
             <Textarea
               id="branch-desc"
               rows={3}
-              placeholder="Опис філіалу..."
+              placeholder={t('admin.branches.description')}
               value={form.description}
               onChange={(e) => updateField('description', e.target.value)}
             />
@@ -288,7 +290,7 @@ function BranchFormDialog({
               onCheckedChange={(checked) => updateField('isOpen', checked)}
             />
             <Label htmlFor="branch-open" className="cursor-pointer">
-              Філіал відкритий
+              {t('admin.branches.isOpen')}
             </Label>
           </div>
 
@@ -299,10 +301,10 @@ function BranchFormDialog({
               onClick={() => onOpenChange(false)}
               disabled={saving}
             >
-              Скасувати
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={saving || !form.name.trim() || !form.address.trim()}>
-              {saving ? 'Збереження...' : isEdit ? 'Оновити' : 'Створити'}
+              {saving ? t('common.loading') : t('common.save')}
             </Button>
           </DialogFooter>
         </form>
@@ -313,6 +315,7 @@ function BranchFormDialog({
 
 // ─── Main page ─────────────────────────────────────────────────
 export default function BranchesPage() {
+  const t = useT();
   const { data: branches, loading, refetch } = useAdminPaginatedApi<Branch>('/api/admin/branches');
 
   // Search
@@ -374,16 +377,16 @@ export default function BranchesPage() {
   return (
     <main className="flex-1 p-4 md:p-6 space-y-6">
       <PageHeader
-        title="Філії"
-        description="Керування філіями ресторану"
-        action={{ label: 'Додати філіал', onClick: handleOpenCreate }}
+        title={t('admin.branches.title')}
+        description=""
+        action={{ label: t('admin.branches.create'), onClick: handleOpenCreate }}
       />
 
       {/* Search */}
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Пошук за назвою або містом..."
+          placeholder={t('common.search')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
@@ -398,19 +401,19 @@ export default function BranchesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Назва</TableHead>
-                <TableHead className="hidden md:table-cell">Адреса</TableHead>
-                <TableHead>Місто</TableHead>
-                <TableHead>Статус</TableHead>
-                <TableHead className="text-center">Замовлення</TableHead>
-                <TableHead className="text-right">Дії</TableHead>
+                <TableHead>{t('admin.branches.name')}</TableHead>
+                <TableHead className="hidden md:table-cell">{t('admin.branches.address')}</TableHead>
+                <TableHead>{t('admin.branches.name')}</TableHead>
+                <TableHead>{t('common.status')}</TableHead>
+                <TableHead className="text-center">{t('admin.branches.orders')}</TableHead>
+                <TableHead className="text-right">{t('common.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    {search ? 'Нічого не знайдено' : 'Немає філіалів'}
+                    {t('common.noData')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -434,7 +437,7 @@ export default function BranchesPage() {
                           size="icon"
                           className="h-8 w-8"
                           onClick={() => handleOpenEdit(branch)}
-                          aria-label="Редагувати"
+                          aria-label={t('common.edit')}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -443,7 +446,7 @@ export default function BranchesPage() {
                           size="icon"
                           className="h-8 w-8"
                           onClick={() => handleToggle(branch)}
-                          aria-label={branch.isOpen ? 'Закрити' : 'Відкрити'}
+                          aria-label={branch.isOpen ? t('admin.branches.isOpen') : ''}
                         >
                           <Power className="h-4 w-4" />
                         </Button>
@@ -452,7 +455,7 @@ export default function BranchesPage() {
                           size="icon"
                           className="h-8 w-8 text-destructive hover:text-destructive"
                           onClick={() => setDeleteTarget(branch)}
-                          aria-label="Видалити"
+                          aria-label={t('common.delete')}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -480,9 +483,9 @@ export default function BranchesPage() {
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-        title="Видалити філіал?"
-        description={`Ви впевнені, що хочете видалити філіал «${deleteTarget?.name ?? ''}»? Цю дію неможливо скасувати.`}
-        confirmLabel="Видалити"
+        title={t('admin.branches.deleteConfirm')}
+        description={`«${deleteTarget?.name ?? ''}»`}
+        confirmLabel={t('common.delete')}
         onConfirm={handleDelete}
       />
     </main>

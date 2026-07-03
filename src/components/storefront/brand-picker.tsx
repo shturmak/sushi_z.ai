@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useBrand, API } from '@/lib/store'
+import { useT } from '@/i18n'
 import type { BrandInfo } from '@/lib/store'
 import { Card, CardContent } from '@/components/ui/card'
 import { Loader2, UtensilsCrossed } from 'lucide-react'
@@ -20,6 +21,7 @@ function SkeletonCard() {
 }
 
 export default function BrandPicker() {
+  const t = useT()
   const [brands, setBrands] = useState<BrandInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -33,7 +35,7 @@ export default function BrandPicker() {
       } else if (data && Array.isArray(data) && data.length > 0) {
         setBrands(data as BrandInfo[])
       } else {
-        setError('Немає доступних закладів')
+        setError(t('brandPicker.noBrands'))
       }
       setLoading(false)
     }
@@ -49,10 +51,10 @@ export default function BrandPicker() {
       <div className="mb-8 text-center">
         <UtensilsCrossed className="mx-auto mb-4 h-12 w-12 text-primary" />
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-          Оберіть заклад
+          {t('brandPicker.title')}
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Виберіть заклад, де хочете замовити
+          {t('brandPicker.subtitle')}
         </p>
       </div>
 
