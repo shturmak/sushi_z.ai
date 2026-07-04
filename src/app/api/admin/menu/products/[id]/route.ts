@@ -61,6 +61,30 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    await requireAdmin();
+    const { id } = await params;
+    const body = await request.json();
+    const { isAvailable } = body as { isAvailable?: boolean };
+
+    if (typeof isAvailable !== 'boolean') {
+      return apiError('VALIDATION_ERROR', 'isAvailable (boolean) is required', 400);
+    }
+
+    const updated = await db.product.update({
+      where: { id },
+      data: { isAvailable },
+      include: { category: true, optionGroups: { include: { options: true }, orderBy: { sortOrder: 'asc' } } },
+    });
+
+    return apiSuccess(updated, 'Product availability updated');
+  } catch (error: unknown) {
+    if (error && typeof error === 'object' && 'status' in error) return error as Response;
+    return apiError('INTERNAL_ERROR', 'Failed', 500);
+  }
+}
+
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireAdmin();

@@ -16,6 +16,10 @@ export interface Branch {
   description: string | null;
   imageUrl: string | null;
   sortOrder: number;
+  autoConfirm: boolean;
+  acceptingOrders: boolean;
+  minOrderAmount: number;
+  prepTimeMinutes: number;
   createdAt: string;
   updatedAt: string;
   _count?: { orders: number; categories: number };
@@ -204,6 +208,10 @@ export interface BranchFormData {
   isOpen: boolean;
   workSchedule: string;
   description: string;
+  autoConfirm: boolean;
+  acceptingOrders: boolean;
+  minOrderAmount: number;
+  prepTimeMinutes: number;
 }
 
 export interface CategoryFormData {
@@ -251,4 +259,28 @@ export interface PromotionFormData {
   startDate: string;
   endDate: string;
   status: PromotionStatus;
+}
+
+// ── Feedback / Support ──────────────────────────────────────────────
+
+export type FeedbackType = 'order_issue' | 'general' | 'suggestion' | 'complaint';
+export type FeedbackStatus = 'new' | 'in_progress' | 'resolved' | 'closed';
+
+export interface Feedback {
+  id: string;
+  userId: string | null;
+  brandId: string;
+  branchId: string | null;
+  orderId: string | null;
+  type: FeedbackType;
+  status: FeedbackStatus;
+  subject: string | null;
+  message: string;
+  contactInfo: string | null;
+  adminReply: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user: { firstName: string; lastName: string } | null;
+  branch: { name: string } | null;
+  order: { orderNumber: string } | null;
 }

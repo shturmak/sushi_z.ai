@@ -16,6 +16,10 @@ export async function GET(request: NextRequest) {
       return apiError('NOT_FOUND', 'Branch not found', 404);
     }
 
+    if (!branch.acceptingOrders) {
+      return apiError('NOT_ACCEPTING', 'This branch is not accepting orders right now', 403);
+    }
+
     const categories = await db.category.findMany({
       where: {
         OR: [{ branchId }, { branchId: null }],

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -16,12 +16,13 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Pencil, Trash2, Plus, X, Search, Upload } from 'lucide-react';
+import { Pencil, Trash2, Plus, X, Search, Upload, PackageCheck, PackageX } from 'lucide-react';
 import { PageHeader } from '@/components/admin/page-header';
 import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { TableSkeleton } from '@/components/admin/admin-skeletons';
-import { useAdminPaginatedApi, adminPost, adminPut, adminDelete } from '@/lib/admin-api';
+import { useAdminPaginatedApi, adminPost, adminPut, adminDelete, adminPatch } from '@/lib/admin-api';
 import type { Product, Category, ProductFormData } from '@/lib/admin-types';
 import { useT } from '@/i18n';
 
@@ -58,19 +59,95 @@ export default function ProductsPage() {
 
   // Filters
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [stockFilter, setStockFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const filteredProducts = useMemo(() => {
     let result = products;
     if (categoryFilter !== 'all') {
       result = result.filter(p => p.categoryId === categoryFilter);
     }
+    if (stockFilter === 'in') {
+      result = result.filter(p => p.isAvailable);
+    } else if (stockFilter === 'out') {
+      result = result.filter(p => !p.isAvailable);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(p => p.name.toLowerCase().includes(q));
     }
     return result;
-  }, [products, categoryFilter, searchQuery]);
+  }, [products, categoryFilter, stockFilter, searchQuery]);
+
+  // ─── Selection helpers ───
+  const allFilteredSelected = filteredProducts.length > 0 && filteredProducts.every(p => selectedIds.has(p.id));
+  const someFilteredSelected = filteredProducts.some(p => selectedIds.has(p.id)) && !allFilteredSelected;
+
+  const toggleSelectAll = useCallback(() => {
+    if (allFilteredSelected) {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        filteredProducts.forEach(p => next.delete(p.id));
+        return next;
+      });
+    } else {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        filteredProducts.forEach(p => next.add(p.id));
+        return next;
+      });
+    }
+  }, [allFilteredSelected, filteredProducts]);
+
+  const toggleSelectOne = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // ─── Quick stock toggle (optimistic) ───
+  const handleStockToggle = useCallback(async (prod: Product, checked: boolean) => {
+    // Optimistic: update local data immediately
+    const previousAvailable = prod.isAvailable;
+    Object.assign(prod, { isAvailable: checked });
+    // Force re-render by toggling a dummy state — we rely on the object mutation
+    // since React won't detect it; use setSelectedIds to trigger re-render
+    setSelectedIds(prev => new Set(prev));
+
+    try {
+      await adminPatch(`/api/admin/menu/products/${prod.id}`, { isAvailable: checked });
+    } catch {
+      // Revert on error
+      Object.assign(prod, { isAvailable: previousAvailable });
+      setSelectedIds(prev => new Set(prev));
+    }
+  }, []);
+
+  // ─── Batch stock toggle ───
+  const handleBatchStock = useCallback(async (available: boolean) => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+
+    const targets = products.filter(p => ids.includes(p.id));
+    // Optimistic update
+    targets.forEach(p => { Object.assign(p, { isAvailable: available }); });
+    setSelectedIds(prev => new Set(prev));
+
+    try {
+      await Promise.all(
+        ids.map(id => adminPatch(`/api/admin/menu/products/${id}`, { isAvailable: available })),
+      );
+    } catch {
+      // Revert on error
+      targets.forEach(p => { Object.assign(p, { isAvailable: !available }); });
+      setSelectedIds(prev => new Set(prev));
+    }
+    setSelectedIds(new Set());
+  }, [selectedIds, products]);
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -285,6 +362,35 @@ export default function ProductsPage() {
         action={{ label: t('admin.products.create'), onClick: openCreate }}
       />
 
+      {/* Batch actions toolbar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 p-3 mb-4 rounded-md border bg-muted/50">
+          <span className="text-sm font-medium">
+            {selectedIds.size} {t('stock.selected')}
+          </span>
+          <div className="flex items-center gap-2 ml-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleBatchStock(true)}
+              className="h-8"
+            >
+              <PackageCheck className="h-4 w-4 mr-1.5 text-emerald-600" />
+              {t('stock.batchInStock')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleBatchStock(false)}
+              className="h-8"
+            >
+              <PackageX className="h-4 w-4 mr-1.5 text-destructive" />
+              {t('stock.batchOutOfStock')}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Filters row */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
@@ -298,6 +404,17 @@ export default function ProductsPage() {
                 {cat.name}
               </SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={stockFilter} onValueChange={v => { setStockFilter(v); setSelectedIds(new Set()); }}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder={t('stock.filterAll')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('stock.filterAll')}</SelectItem>
+            <SelectItem value="in">{t('stock.filterInStock')}</SelectItem>
+            <SelectItem value="out">{t('stock.filterOutOfStock')}</SelectItem>
           </SelectContent>
         </Select>
 
@@ -317,6 +434,13 @@ export default function ProductsPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={allFilteredSelected ? true : someFilteredSelected ? 'indeterminate' : false}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Select all"
+                />
+              </TableHead>
               <TableHead>{t('admin.products.category')}</TableHead>
               <TableHead>{t('admin.products.name')}</TableHead>
               <TableHead className="text-right">{t('admin.products.price')}</TableHead>
@@ -328,13 +452,20 @@ export default function ProductsPage() {
           <TableBody>
             {filteredProducts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                   {t('common.noData')}
                 </TableCell>
               </TableRow>
             ) : (
               filteredProducts.map(prod => (
-                <TableRow key={prod.id}>
+                <TableRow key={prod.id} data-state={selectedIds.has(prod.id) ? 'selected' : undefined}>
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedIds.has(prod.id)}
+                      onCheckedChange={() => toggleSelectOne(prod.id)}
+                      aria-label={`Select ${prod.name}`}
+                    />
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {prod.category.name}
                   </TableCell>
@@ -342,13 +473,11 @@ export default function ProductsPage() {
                   <TableCell className="text-right">{prod.price} ₴</TableCell>
                   <TableCell>{prod.weight || '—'}</TableCell>
                   <TableCell className="text-center">
-                    {prod.isAvailable ? (
-                      <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                        —
-                      </Badge>
-                    ) : (
-                      <Badge variant="destructive">—</Badge>
-                    )}
+                    <Switch
+                      checked={prod.isAvailable}
+                      onCheckedChange={checked => handleStockToggle(prod, checked)}
+                      aria-label={t('stock.toggleStock')}
+                    />
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">

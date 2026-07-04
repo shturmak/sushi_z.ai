@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   try {
     await requireAdmin();
     const body = await request.json();
-    const { name, slug, address, phone, email, latitude, longitude, isOpen, workSchedule, description } = body;
+    const { name, slug, address, phone, email, latitude, longitude, isOpen, workSchedule, description, autoConfirm, acceptingOrders, minOrderAmount, prepTimeMinutes } = body;
 
     if (!name || !slug || !address) return apiError('VALIDATION_ERROR', 'name, slug, address required');
 
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     if (existing) return apiError('CONFLICT', 'Branch with this slug exists', 409);
 
     const branch = await db.branch.create({
-      data: { name, slug, address, phone, email, latitude, longitude, isOpen: isOpen ?? true, workSchedule, description },
+      data: { name, slug, address, phone, email, latitude, longitude, isOpen: isOpen ?? true, workSchedule, description, autoConfirm: autoConfirm ?? false, acceptingOrders: acceptingOrders ?? true, minOrderAmount: minOrderAmount ?? 0, prepTimeMinutes: prepTimeMinutes ?? 30 },
     });
     return apiSuccess(branch, 'Branch created', 201);
   } catch (error: unknown) {

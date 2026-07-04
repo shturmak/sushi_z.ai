@@ -597,3 +597,144 @@ Stage Summary:
 - Active filters shown as dismissible badges below search bar
 - Filtered results displayed in flat grid with count header and empty state
 - Clearing all filters returns to normal category-based view
+
+---
+Task ID: 7.6
+Agent: order-acceptance-settings
+Task: Order Acceptance Settings — Branch fields, API, admin form, menu guard
+
+Work Log:
+- Added `autoConfirm`, `acceptingOrders`, `minOrderAmount`, `prepTimeMinutes` to `Branch` and `BranchFormData` interfaces in `src/lib/admin-types.ts`
+- Updated `POST /api/admin/branches` route to destructure and persist the 4 new fields with sensible defaults
+- `PUT /api/admin/branches/[id]` required no change — already passes full body through to Prisma
+- Updated `src/app/admin/branches/page.tsx`:
+  - Imported `Separator` component
+  - Added 4 new fields to `emptyForm` (autoConfirm: false, acceptingOrders: true, minOrderAmount: 0, prepTimeMinutes: 30)
+  - Added 4 new fields to `resetForm` for edit mode (reads from branch data)
+  - Added new UI section after isOpen toggle: Separator, section header (`t('admin.branches.orderSettings')`), autoConfirm Switch, acceptingOrders Switch, minOrderAmount number Input, prepTimeMinutes number Input
+- Updated `GET /api/menu` to check `branch.acceptingOrders` and return 403 `NOT_ACCEPTING` when false
+- Ran `db:push` (schema already in sync) and `eslint .` (clean)
+
+Stage Summary:
+- Branch admin form now has a dedicated "Order Acceptance Settings" section with two switches and two number inputs
+- New fields persist correctly via POST (create) and PUT (update) APIs
+- Storefront menu API guards against branches that have disabled order acceptance
+
+---
+Task ID: 7.5
+Agent: stock-management-builder
+Task: Stock Management / Out of Stock — quick toggle, filter, batch actions
+
+Work Log:
+- Added `adminPatch<TReq, TRes>` helper to `src/lib/admin-api.ts` (no toast, for quick toggles)
+- Added `PATCH /api/admin/menu/products/[id]` endpoint that accepts `{ isAvailable: boolean }`, updates only that field, and returns the updated product (does NOT rebuild option groups)
+- Enhanced `src/app/admin/menu/products/page.tsx`:
+  - Replaced static Badge (showing "—") in availability column with interactive `Switch` for optimistic stock toggle via PATCH
+  - Added stock filter dropdown ("All" / "In stock" / "Out of stock") next to category filter using `t('stock.filterAll')`, `t('stock.filterInStock')`, `t('stock.filterOutOfStock')`
+  - Added `Checkbox` column per row + header "select all" checkbox with indeterminate state
+  - Added batch actions toolbar that appears when products are selected: shows "N selected" count, "All in stock" button (`PackageCheck` icon), and "All out of stock" button (`PackageX` icon)
+  - Batch actions use `Promise.all` with PATCH calls and optimistic updates with rollback on error
+  - Imported `Checkbox`, `PackageCheck`, `PackageX`, `adminPatch`, `useCallback`
+
+Stage Summary:
+- Admin can now toggle product availability directly from the products table with optimistic Switch
+- Stock filter allows quick filtering by availability status
+- Multi-select with batch in-stock/out-of-stock actions for efficient bulk management
+
+---
+Task ID: 7.7
+Agent: feedback-support-builder
+Task: Feedback / Support Channel — customer API, admin API, admin management page
+
+Work Log:
+- Added `FeedbackType`, `FeedbackStatus` types and `Feedback` interface to `src/lib/admin-types.ts`
+- Created customer API `POST /api/feedback/route.ts`:
+  - Optional JWT auth (sets userId if authenticated, allows guest submissions)
+  - Validates required `message` and `type` enum
+  - Gets `brandId` from query param
+  - Returns created feedback with user/branch/order includes (201)
+- Created admin list API `GET /api/admin/reviews/feedback/route.ts`:
+  - Requires admin auth via `requireAdmin()`
+  - Pagination via `parsePagination`/`paginateResult`
+  - Optional filters: `status` and `type` query params
+  - Includes user (firstName, lastName), branch (name), order (orderNumber)
+  - Ordered by createdAt desc
+- Created admin detail/update API `GET + PATCH /api/admin/feedback/[id]/route.ts`:
+  - GET: returns single feedback with user, branch, order, brand relations
+  - PATCH: updates `status` and/or `adminReply`, validates status enum
+- Created admin feedback page `src/app/admin/feedback/page.tsx`:
+  - PageHeader with `t('admin.feedback.title')`
+  - Status filter (All, New, In progress, Resolved, Closed) + type filter dropdowns
+  - Table: Date, Type (colored badge), From (user name or "Guest"), Subject/Message (truncated), Status (colored badge), Actions (eye icon)
+  - Clickable rows open detail dialog with: full message, user info, contact info, linked order/branch, admin reply display, reply textarea + send button
+  - Status action buttons: "Mark Resolved", "Close", "Reopen", "Mark In Progress" (context-dependent)
+  - Uses `useAdminPaginatedApi` for data fetching with filter query params
+  - Uses raw fetch with `useAdminAuth.getState().token` for PATCH (no adminPatch helper existed)
+  - Status badge colors: new=blue, in_progress=amber, resolved=green, closed=gray
+  - Type badge colors: order_issue=red, general=slate, suggestion=violet, complaint=orange
+- Updated `src/components/admin/admin-sidebar.tsx`:
+  - Imported `MessageCircleWarning` from lucide-react
+  - Added feedback nav item after reviews: `{ href: '/admin/feedback', label: t('admin.sidebar.feedback'), icon: MessageCircleWarning }`
+- ESLint passes cleanly, dev server runs without errors
+
+Stage Summary:
+- Full feedback/support channel implemented: customer can submit feedback via POST /api/feedback
+- Admin has dedicated page at /admin/feedback with filters, table, and detail dialog for managing feedback
+- Admin can reply to feedback and change status (new → in_progress → resolved/closed, with reopen capability)
+- Sidebar updated with feedback link and MessageCircleWarning icon
+---
+Task ID: 7.5
+Agent: Main
+Task: Stock Management — quick toggle, batch operations, stock filter
+
+Work Log:
+- Added PATCH endpoint to /api/admin/menu/products/[id] for quick isAvailable toggle
+- Added adminPatch helper to admin-api.ts (no toast for quick toggles)
+- Replaced static Badge with interactive Switch in products table for one-click stock toggle
+- Added stock filter dropdown (All / In stock / Out of stock)
+- Added checkbox selection + batch actions toolbar for mass stock toggle
+
+Stage Summary:
+- Admin can now quickly toggle product availability with one click
+- Batch operations allow marking multiple products in/out of stock
+- Stock filter helps find unavailable items quickly
+
+---
+Task ID: 7.6
+Agent: Main (via subagent)
+Task: Order acceptance settings for branches
+
+Work Log:
+- Added autoConfirm, acceptingOrders, minOrderAmount, prepTimeMinutes to Branch schema
+- Updated Branch type and BranchFormData in admin-types.ts
+- Updated branch POST/PUT APIs to handle new fields
+- Added order settings section to branch admin page form
+- Added acceptingOrders guard in storefront menu API (returns 403 if branch not accepting)
+
+Stage Summary:
+- Each branch can configure auto-confirm, accepting orders toggle, min order amount, prep time
+- Menu API blocks orders when branch.acceptingOrders is false
+- Admin UI has a dedicated settings section in branch form
+
+---
+Task ID: 7.7
+Agent: Main (via subagent)
+Task: Feedback / Support channel — full stack
+
+Work Log:
+- Created Feedback model in Prisma with type/status enums
+- Created POST /api/feedback for customer submissions (supports guest + auth)
+- Created GET /api/admin/feedback (paginated, filterable by status/type)
+- Created GET+PATCH /api/admin/feedback/[id] (detail view, status/reply update)
+- Created admin feedback page with table, filters, detail dialog, reply, status actions
+- Added feedback sidebar item with MessageCircleWarning icon
+- Created FeedbackDialog component for customers
+- Added feedback form button in profile view
+- Added API.feedback.submit to store.ts
+- Added Feedback type to admin-types.ts
+- Full i18n support (uk/ru/en) for all new UI text
+
+Stage Summary:
+- Customers can submit feedback from profile page (type, subject, message, contact)
+- Admins can view, filter, reply to, and manage status of feedback entries
+- Full workflow: New → In progress → Resolved → Closed (with Reopen option)

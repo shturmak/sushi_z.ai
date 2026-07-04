@@ -164,6 +164,14 @@ export async function adminPut<TReq, TRes = unknown>(path: string, body: TReq): 
   return result;
 }
 
+export async function adminPatch<TReq, TRes = unknown>(path: string, body: TReq): Promise<TRes> {
+  const result = await fetchApi<TRes>(path, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+  return result;
+}
+
 export async function adminDelete<TRes = unknown>(path: string): Promise<TRes> {
   const result = await fetchApi<TRes>(path, { method: 'DELETE' });
   toast.success('Успішно видалено');

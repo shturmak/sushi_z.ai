@@ -216,6 +216,7 @@ const en: Messages = {
       orders: 'Orders',
       promotions: 'Promotions',
       reviews: 'Reviews',
+      feedback: 'Feedback',
     },
 
     analytics: {
@@ -245,6 +246,11 @@ const en: Messages = {
       description: 'Description',
       orders: 'orders',
       categories: 'categories',
+      autoConfirm: 'Auto-confirm orders',
+      acceptingOrders: 'Accepting orders',
+      minOrderAmount: 'Min. order amount (₴)',
+      prepTimeMinutes: 'Prep time (min)',
+      orderSettings: 'Order acceptance settings',
     },
 
     categories: {
@@ -277,6 +283,7 @@ const en: Messages = {
       weight: 'Weight',
       calories: 'Calories',
       available: 'Available',
+      outOfStock: 'Out of stock',
       description: 'Description',
       optionGroups: 'Option groups',
       optionGroupName: 'Group name',
@@ -385,6 +392,35 @@ const en: Messages = {
       noReviews: 'No reviews',
     },
 
+    feedback: {
+      title: 'Feedback',
+      empty: 'No feedback',
+      reply: 'Reply',
+      replyPlaceholder: 'Type your reply...',
+      sendReply: 'Send reply',
+      markResolved: 'Resolved',
+      markClosed: 'Close',
+      reopen: 'Reopen',
+      statuses: {
+        new: 'New',
+        in_progress: 'In progress',
+        resolved: 'Resolved',
+        closed: 'Closed',
+      },
+      types: {
+        order_issue: 'Order issue',
+        general: 'General',
+        suggestion: 'Suggestion',
+        complaint: 'Complaint',
+      },
+      from: 'From',
+      order: 'Order',
+      contact: 'Contact',
+      message: 'Message',
+      replyLabel: 'Admin reply',
+      date: 'Date',
+    },
+
     brands: {
       title: 'Brands',
       create: 'Add Brand',
@@ -435,6 +471,43 @@ const en: Messages = {
     loginRequired: 'Login to leave a review',
     reviewSubmitted: 'Thanks for your review!',
     orderRequired: 'You can review after receiving your order',
+  },
+
+  // ── 7.5 Stock Management ──────────────────
+  stock: {
+    inStock: 'In stock',
+    outOfStock: 'Out of stock',
+    toggleStock: 'Toggle stock',
+    markInStock: 'Mark as in stock',
+    markOutOfStock: 'Mark as out of stock',
+    batchInStock: 'All in stock',
+    batchOutOfStock: 'All out of stock',
+    filterAll: 'All',
+    filterInStock: 'In stock',
+    filterOutOfStock: 'Out of stock',
+    selected: 'selected',
+  },
+
+  // ── 7.7 Feedback / Support ──────────────────
+  feedback: {
+    title: 'Feedback',
+    reportProblem: 'Report a problem',
+    submitFeedback: 'Submit',
+    feedbackSent: 'Thank you! We received your message.',
+    type: 'Type',
+    types: {
+      order_issue: 'Order issue',
+      general: 'General question',
+      suggestion: 'Suggestion',
+      complaint: 'Complaint',
+    },
+    subject: 'Subject',
+    subjectPlaceholder: 'Briefly describe the issue...',
+    message: 'Message',
+    messagePlaceholder: 'Describe the details...',
+    contactInfo: 'Contact info',
+    contactInfoPlaceholder: 'Phone or email for contact',
+    linkedOrder: 'Linked order',
   },
 }
 

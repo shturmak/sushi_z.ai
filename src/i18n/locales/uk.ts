@@ -216,6 +216,7 @@ const uk = {
       orders: 'Закази',
       promotions: 'Акції / Промокоди',
       reviews: 'Відгуки',
+      feedback: 'Зворотний зв\'язок',
     },
 
     analytics: {
@@ -245,6 +246,11 @@ const uk = {
       description: 'Опис',
       orders: 'замовлень',
       categories: 'категорій',
+      autoConfirm: 'Авто-підтвердження замовлень',
+      acceptingOrders: 'Прийом замовлень',
+      minOrderAmount: 'Мін. сума замовлення (₴)',
+      prepTimeMinutes: 'Час приготування (хв)',
+      orderSettings: 'Налаштування прийому замовлень',
     },
 
     categories: {
@@ -277,6 +283,7 @@ const uk = {
       weight: 'Вага',
       calories: 'Калорії',
       available: 'Доступний',
+      outOfStock: 'Немає в наявності',
       description: 'Опис',
       optionGroups: 'Групи опцій',
       optionGroupName: 'Назва групи',
@@ -385,6 +392,35 @@ const uk = {
       noReviews: 'Немає відгуків',
     },
 
+    feedback: {
+      title: 'Зворотний зв\'язок',
+      empty: 'Немає звернень',
+      reply: 'Відповісти',
+      replyPlaceholder: 'Введіть відповідь...',
+      sendReply: 'Надіслати відповідь',
+      markResolved: 'Вирішено',
+      markClosed: 'Закрити',
+      reopen: 'Відкрити знову',
+      statuses: {
+        new: 'Нове',
+        in_progress: 'В роботі',
+        resolved: 'Вирішено',
+        closed: 'Закрито',
+      },
+      types: {
+        order_issue: 'Проблема з замовленням',
+        general: 'Загальне',
+        suggestion: 'Пропозиція',
+        complaint: 'Скарга',
+      },
+      from: 'Від',
+      order: 'Замовлення',
+      contact: 'Контакт',
+      message: 'Повідомлення',
+      replyLabel: 'Відповідь адміна',
+      date: 'Дата',
+    },
+
     brands: {
       title: 'Бренди',
       create: 'Додати бренд',
@@ -435,6 +471,43 @@ const uk = {
     loginRequired: 'Увійдіть, щоб залишити відгук',
     reviewSubmitted: 'Дякуємо за відгук!',
     orderRequired: 'Відгук можна залишити після отримання замовлення',
+  },
+
+  // ── 7.5 Stock Management ──────────────────
+  stock: {
+    inStock: 'В наявності',
+    outOfStock: 'Немає в наявності',
+    toggleStock: 'Змінити наявність',
+    markInStock: 'Позначити як в наявності',
+    markOutOfStock: 'Позначити як відсутнє',
+    batchInStock: 'Всі в наявність',
+    batchOutOfStock: 'Всі як відсутні',
+    filterAll: 'Всі',
+    filterInStock: 'В наявності',
+    filterOutOfStock: 'Відсутні',
+    selected: 'обрано',
+  },
+
+  // ── 7.7 Feedback / Support ──────────────────
+  feedback: {
+    title: 'Зворотний зв\'язок',
+    reportProblem: 'Повідомити про проблему',
+    submitFeedback: 'Надіслати',
+    feedbackSent: 'Дякуємо! Ми отримали ваш повідомлення.',
+    type: 'Тип звернення',
+    types: {
+      order_issue: 'Проблема з замовленням',
+      general: 'Загальне питання',
+      suggestion: 'Пропозиція',
+      complaint: 'Скарга',
+    },
+    subject: 'Тема',
+    subjectPlaceholder: 'Коротко опишіть проблему...',
+    message: 'Повідомлення',
+    messagePlaceholder: 'Опишіть деталі...',
+    contactInfo: 'Контактні дані',
+    contactInfoPlaceholder: 'Телефон або email для зв\'язку',
+    linkedOrder: 'Пов\'язане замовлення',
   },
 } as const
 

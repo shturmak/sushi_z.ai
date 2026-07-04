@@ -170,6 +170,10 @@ export const API = {
     create: (productId: string, data: { orderId: string; rating: number; comment?: string }) =>
       apiFetch(`/api/products/${productId}/reviews`, { method: 'POST', body: JSON.stringify(data) }),
   },
+  feedback: {
+    submit: (data: { type: string; subject?: string; message: string; contactInfo?: string; orderId?: string; branchId?: string }) =>
+      apiFetch('/api/feedback', { method: 'POST', body: JSON.stringify(data) }),
+  },
   admin: {
     analytics: () => apiFetch('/api/admin/analytics'),
     branches: () => apiFetch('/api/admin/branches'),

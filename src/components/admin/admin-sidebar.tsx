@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   BarChart3, Building2, Store, MapPin, UtensilsCrossed, ShoppingCart,
-  Tag, Star, ChevronDown, ChevronRight,
+  Tag, Star, MessageCircleWarning, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -52,6 +52,7 @@ export function AdminSidebar() {
     { href: '/admin/orders', label: t('admin.sidebar.orders'), icon: ShoppingCart },
     { href: '/admin/promotions', label: t('admin.sidebar.promotions'), icon: Tag },
     { href: '/admin/reviews', label: t('admin.sidebar.reviews'), icon: Star },
+    { href: '/admin/feedback', label: t('admin.sidebar.feedback'), icon: MessageCircleWarning },
   ];
 
   return (

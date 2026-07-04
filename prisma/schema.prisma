@@ -42,6 +42,7 @@ model Brand {
   users           User[]
   reviews         Review[]
   favoriteProducts FavoriteProduct[]
+  feedbacks       Feedback[]
 
   @@map("brands")
 }
@@ -71,6 +72,7 @@ model User {
   loyaltyAccounts  LoyaltyAccount[]
   favoriteProducts FavoriteProduct[]
   reviews          Review[]
+  feedbacks        Feedback[]
   brand            Brand?  @relation(fields: [brandId], references: [id], onDelete: SetNull)
 
   @@map("users")
@@ -126,11 +128,16 @@ model Branch {
   email         String?
   latitude      Float?
   longitude     Float?
-  isOpen        Boolean  @default(true)
-  workSchedule  String?  // JSON: {"mon":"09:00-22:00",...} — NOTE: For PostgreSQL, change to `Json` type
-  description   String?
-  imageUrl      String?
-  sortOrder     Int      @default(0)
+  isOpen             Boolean  @default(true)
+  workSchedule       String?  // JSON: {"mon":"09:00-22:00",...} — NOTE: For PostgreSQL, change to `Json` type
+  description        String?
+  imageUrl           String?
+  sortOrder          Int      @default(0)
+  // 7.6 — Order acceptance settings
+  autoConfirm        Boolean  @default(false)       // auto-accept new orders vs manual confirmation
+  acceptingOrders    Boolean  @default(true)        // quick toggle: accepting orders right now?
+  minOrderAmount     Float    @default(0)           // minimum order amount for delivery
+  prepTimeMinutes    Int      @default(30)          // default estimated preparation time
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -140,6 +147,8 @@ model Branch {
   deliveryZones DeliveryZone[]
   products      Product[]
   carts         Cart[]
+
+  feedbacks    Feedback[]
 
   @@unique([brandId, slug])
   @@map("branches")
@@ -366,6 +375,7 @@ model Order {
   items     OrderItem[]
   payments  Payment[]
   reviews   Review[]
+  feedbacks Feedback[]
 
   @@map("orders")
 }
@@ -528,4 +538,45 @@ model Review {
   order    Order    @relation(fields: [orderId], references: [id])
 
   @@map("reviews")
+}
+
+// ──────────────────────────────────────────────
+//  FEEDBACK / SUPPORT
+// ──────────────────────────────────────────────
+
+enum FeedbackType {
+  order_issue
+  general
+  suggestion
+  complaint
+}
+
+enum FeedbackStatus {
+  new
+  in_progress
+  resolved
+  closed
+}
+
+model Feedback {
+  id           String         @id @default(cuid())
+  userId       String?
+  brandId      String
+  branchId     String?
+  orderId      String?        // linked order (optional)
+  type         FeedbackType   @default(general)
+  status       FeedbackStatus @default(new)
+  subject      String?
+  message      String
+  contactInfo  String?        // phone/email provided by user
+  adminReply   String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  brand   Brand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  branch  Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@map("feedbacks")
 }

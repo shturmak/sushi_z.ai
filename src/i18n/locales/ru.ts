@@ -216,6 +216,7 @@ const ru: Messages = {
       orders: 'Заказы',
       promotions: 'Акции / Промокоды',
       reviews: 'Отзывы',
+      feedback: 'Обратная связь',
     },
 
     analytics: {
@@ -245,6 +246,11 @@ const ru: Messages = {
       description: 'Описание',
       orders: 'заказов',
       categories: 'категорий',
+      autoConfirm: 'Авто-подтверждение заказов',
+      acceptingOrders: 'Приём заказов',
+      minOrderAmount: 'Мин. сумма заказа (₴)',
+      prepTimeMinutes: 'Время приготовления (мин)',
+      orderSettings: 'Настройки приёма заказов',
     },
 
     categories: {
@@ -277,6 +283,7 @@ const ru: Messages = {
       weight: 'Вес',
       calories: 'Калории',
       available: 'Доступен',
+      outOfStock: 'Нет в наличии',
       description: 'Описание',
       optionGroups: 'Группы опций',
       optionGroupName: 'Название группы',
@@ -385,6 +392,35 @@ const ru: Messages = {
       noReviews: 'Нет отзывов',
     },
 
+    feedback: {
+      title: 'Обратная связь',
+      empty: 'Нет обращений',
+      reply: 'Ответить',
+      replyPlaceholder: 'Введите ответ...',
+      sendReply: 'Отправить ответ',
+      markResolved: 'Решено',
+      markClosed: 'Закрыть',
+      reopen: 'Открыть снова',
+      statuses: {
+        new: 'Новое',
+        in_progress: 'В работе',
+        resolved: 'Решено',
+        closed: 'Закрыто',
+      },
+      types: {
+        order_issue: 'Проблема с заказом',
+        general: 'Общее',
+        suggestion: 'Предложение',
+        complaint: 'Жалоба',
+      },
+      from: 'От',
+      order: 'Заказ',
+      contact: 'Контакт',
+      message: 'Сообщение',
+      replyLabel: 'Ответ админа',
+      date: 'Дата',
+    },
+
     brands: {
       title: 'Бренды',
       create: 'Добавить бренд',
@@ -435,6 +471,43 @@ const ru: Messages = {
     loginRequired: 'Войдите, чтобы оставить отзыв',
     reviewSubmitted: 'Спасибо за отзыв!',
     orderRequired: 'Отзыв можно оставить после получения заказа',
+  },
+
+  // ── 7.5 Stock Management ──────────────────
+  stock: {
+    inStock: 'В наличии',
+    outOfStock: 'Нет в наличии',
+    toggleStock: 'Изменить наличие',
+    markInStock: 'Отметить как в наличии',
+    markOutOfStock: 'Отметить как отсутствующее',
+    batchInStock: 'Все в наличие',
+    batchOutOfStock: 'Все как отсутствующие',
+    filterAll: 'Все',
+    filterInStock: 'В наличии',
+    filterOutOfStock: 'Отсутствующие',
+    selected: 'выбрано',
+  },
+
+  // ── 7.7 Feedback / Support ──────────────────
+  feedback: {
+    title: 'Обратная связь',
+    reportProblem: 'Сообщить о проблеме',
+    submitFeedback: 'Отправить',
+    feedbackSent: 'Спасибо! Мы получили ваше сообщение.',
+    type: 'Тип обращения',
+    types: {
+      order_issue: 'Проблема с заказом',
+      general: 'Общий вопрос',
+      suggestion: 'Предложение',
+      complaint: 'Жалоба',
+    },
+    subject: 'Тема',
+    subjectPlaceholder: 'Кратко опишите проблему...',
+    message: 'Сообщение',
+    messagePlaceholder: 'Опишите детали...',
+    contactInfo: 'Контактные данные',
+    contactInfoPlaceholder: 'Телефон или email для связи',
+    linkedOrder: 'Связанный заказ',
   },
 }
 

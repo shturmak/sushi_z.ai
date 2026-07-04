@@ -29,6 +29,7 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table';
+import { Separator } from '@/components/ui/separator';
 import { useT } from '@/i18n';
 
 // ─── Ukrainian slug transliteration ────────────────────────────
@@ -66,6 +67,10 @@ const emptyForm: BranchFormData = {
   isOpen: true,
   workSchedule: '',
   description: '',
+  autoConfirm: false,
+  acceptingOrders: true,
+  minOrderAmount: 0,
+  prepTimeMinutes: 30,
 };
 
 // ─── Branch form modal ─────────────────────────────────────────
@@ -100,6 +105,10 @@ function BranchFormDialog({
         isOpen: branch.isOpen,
         workSchedule: branch.workSchedule ?? '',
         description: branch.description ?? '',
+        autoConfirm: branch.autoConfirm,
+        acceptingOrders: branch.acceptingOrders,
+        minOrderAmount: branch.minOrderAmount,
+        prepTimeMinutes: branch.prepTimeMinutes,
       });
     } else {
       setForm(emptyForm);
@@ -292,6 +301,61 @@ function BranchFormDialog({
             <Label htmlFor="branch-open" className="cursor-pointer">
               {t('admin.branches.isOpen')}
             </Label>
+          </div>
+
+          <Separator className="my-2" />
+          <p className="text-sm font-semibold text-muted-foreground">{t('admin.branches.orderSettings')}</p>
+
+          {/* autoConfirm switch */}
+          <div className="flex items-center gap-3">
+            <Switch
+              id="branch-auto-confirm"
+              checked={form.autoConfirm}
+              onCheckedChange={(checked) => updateField('autoConfirm', checked)}
+            />
+            <Label htmlFor="branch-auto-confirm" className="cursor-pointer">
+              {t('admin.branches.autoConfirm')}
+            </Label>
+          </div>
+
+          {/* acceptingOrders switch */}
+          <div className="flex items-center gap-3">
+            <Switch
+              id="branch-accepting-orders"
+              checked={form.acceptingOrders}
+              onCheckedChange={(checked) => updateField('acceptingOrders', checked)}
+            />
+            <Label htmlFor="branch-accepting-orders" className="cursor-pointer">
+              {t('admin.branches.acceptingOrders')}
+            </Label>
+          </div>
+
+          {/* minOrderAmount + prepTimeMinutes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="branch-min-order">{t('admin.branches.minOrderAmount')}</Label>
+              <Input
+                id="branch-min-order"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0"
+                value={form.minOrderAmount}
+                onChange={(e) => updateField('minOrderAmount', Number(e.target.value))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="branch-prep-time">{t('admin.branches.prepTimeMinutes')}</Label>
+              <Input
+                id="branch-prep-time"
+                type="number"
+                min="1"
+                step="1"
+                placeholder="30"
+                value={form.prepTimeMinutes}
+                onChange={(e) => updateField('prepTimeMinutes', Number(e.target.value))}
+              />
+            </div>
           </div>
 
           <DialogFooter className="pt-2">

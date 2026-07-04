@@ -30,7 +30,9 @@ import {
   Plus,
   Pencil,
   Trash2,
+  MessageSquareWarning,
 } from 'lucide-react'
+import { FeedbackDialog } from './feedback-dialog'
 
 // ── Types ────────────────────────────────────────────────
 
@@ -117,6 +119,9 @@ export default function ProfileView() {
   const [addressDialogOpen, setAddressDialogOpen] = useState(false)
   const [editingAddress, setEditingAddress] = useState<UserAddress | null>(null)
   const [addrForm, setAddrForm] = useState({ label: '', street: '', building: '', apartment: '', floor: '', entrance: '', comment: '' })
+
+  // Feedback
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -301,6 +306,20 @@ export default function ProfileView() {
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Feedback / Support section */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2"
+            onClick={() => setFeedbackOpen(true)}
+          >
+            <MessageSquareWarning className="size-4" style={{ color: primaryColor }} />
+            {t('feedback.reportProblem')}
+          </Button>
         </CardContent>
       </Card>
 
@@ -558,6 +577,12 @@ export default function ProfileView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <FeedbackDialog
+        open={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
+        primaryColor={primaryColor}
+      />
     </div>
   )
 }
