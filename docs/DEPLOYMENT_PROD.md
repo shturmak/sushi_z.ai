@@ -246,7 +246,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Generate Prisma client for PostgreSQL
-RUN bunx prisma generate --schema=prisma/schema.postgresql.prisma
+RUN bunx prisma generate --schema=prisma/schema.prisma
 
 # Build Next.js standalone
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -270,7 +270,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 
 # Copy Prisma PostgreSQL schema for migrations
-COPY --from=builder /app/prisma/schema.postgresql.prisma ./prisma/schema.postgresql.prisma
+COPY --from=builder /app/prisma/schema.prisma ./prisma/schema.prisma
 
 USER nextjs
 
@@ -282,15 +282,14 @@ ENV HOSTNAME="0.0.0.0"
 CMD ["bun", "server.js"]
 ```
 
-### 3.5 Switch Schema to PostgreSQL
+### 3.5 Schema is Already PostgreSQL
 
-Before building, ensure the Prisma schema uses PostgreSQL:
+The canonical Prisma schema (`prisma/schema.prisma`) already uses PostgreSQL.
+No manual switching is needed — `prisma generate` and `prisma migrate deploy`
+use it automatically.
 
-```bash
-# The Dockerfile already references schema.postgresql.prisma for generate.
-# But if you need to run commands locally, swap the provider:
-cp prisma/schema.postgresql.prisma prisma/schema.prisma
-```
+> **Note:** There is also `prisma/schema.sqlite.prisma` for quick local
+> prototyping only. It is NOT used in production builds.
 
 ### 3.6 Build and Start
 
@@ -302,7 +301,7 @@ docker compose build
 docker compose up -d db
 
 # Run database migrations
-docker compose exec app npx prisma migrate deploy --schema=prisma/schema.postgresql.prisma
+docker compose exec app npx prisma migrate deploy --schema=prisma/schema.prisma
 
 # (Optional) Seed the database with sample data
 docker compose exec app bun run prisma/seed.ts
@@ -615,10 +614,10 @@ docker compose logs --tail=50 app
 
 ```bash
 # Apply pending migrations
-docker compose exec app npx prisma migrate deploy --schema=prisma/schema.postgresql.prisma
+docker compose exec app npx prisma migrate deploy --schema=prisma/schema.prisma
 
 # If you need to create a new migration (during development):
-# docker compose exec app npx prisma migrate dev --name your_change --schema=prisma/schema.postgresql.prisma
+# docker compose exec app npx prisma migrate dev --name your_change --schema=prisma/schema.prisma
 ```
 
 ### 6.3 Viewing Logs
@@ -957,12 +956,12 @@ pg_isready -h YOUR_DB_HOST -p 5432 -U sushichain
 
 ```bash
 # Check migration status
-docker compose exec app npx prisma migrate status --schema=prisma/schema.postgresql.prisma
+docker compose exec app npx prisma migrate status --schema=prisma/schema.prisma
 
 # If migrations are out of sync, you may need to:
 # 1. Resolve manually
 # 2. Or reset (DESTRUCTIVE — only for fresh deployments):
-docker compose exec app npx prisma migrate reset --force --schema=prisma/schema.postgresql.prisma
+docker compose exec app npx prisma migrate reset --force --schema=prisma/schema.prisma
 ```
 
 ### 9.4 SSL Certificate Issues
@@ -1065,7 +1064,7 @@ docker compose down && docker compose up -d
 git clone https://github.com/your-org/sushichain.git /opt/sushichain
 cd /opt/sushichain && cp .env.example .env && nano .env
 docker compose up -d --build
-docker compose exec app npx prisma migrate deploy --schema=prisma/schema.postgresql.prisma
+docker compose exec app npx prisma migrate deploy --schema=prisma/schema.prisma
 
 # ── Update ───────────────────────────────────────────────────
 cd /opt/sushichain && git pull && docker compose up -d --build

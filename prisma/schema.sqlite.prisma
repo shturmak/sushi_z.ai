@@ -1,15 +1,17 @@
 // ============================================================
-// SushiChain — Omnichannel Food Ordering System
-// Prisma Schema (PostgreSQL)
+// SushiChain — SQLite DEV-ONLY Schema (NOT canonical)
 // ============================================================
-// This is the CANONICAL schema for staging and production.
-// SQLite schema (schema.prisma) is the development variant.
+// WARNING: This file is a convenience copy for quick local
+// prototyping with `db push`. It is NOT the source of truth.
 //
-// Key differences from SQLite:
-//   - provider = "postgresql"
-//   - JSON fields use native Json type
-//   - Tags/allergens use String[] arrays
-//   - All models are multi-tenant (brandId scoping)
+// The CANONICAL schema is prisma/schema.prisma (PostgreSQL).
+// All schema changes MUST go there first.
+//
+// Usage (only for rapid prototyping):
+//   DATABASE_URL="file:./dev-sqlite.db" \
+//   bunx prisma db push --schema=prisma/schema.sqlite.prisma
+//
+// NEVER use this for staging or production.
 // ============================================================
 
 generator client {
@@ -17,7 +19,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -34,30 +36,30 @@ model Brand {
   secondaryColor  String?
   accentColor     String?
   heroBannerUrl   String?
-  promoBannerUrls Json?    // JSON array of banner URLs
+  promoBannerUrls String?  // JSON array of banner URLs — NOTE: For PostgreSQL, change to `Json` type
   description     String?
   slogan          String?
   isActive        Boolean  @default(true)
-  currency        String   @default("UAH")
-  currencySymbol  String   @default("₴")
+  currency        String   @default("UAH")          // 9.3 — brand currency code
+  currencySymbol  String   @default("₴")            // 9.3 — display symbol
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  branches         Branch[]
-  categories       Category[]
-  products         Product[]
-  promotions       Promotion[]
-  orders           Order[]
-  carts            Cart[]
-  loyaltyAccounts  LoyaltyAccount[]
-  users            User[]
-  reviews          Review[]
+  branches        Branch[]
+  categories      Category[]
+  products        Product[]
+  promotions      Promotion[]
+  orders          Order[]
+  carts           Cart[]
+  loyaltyAccounts LoyaltyAccount[]
+  users           User[]
+  reviews         Review[]
   favoriteProducts FavoriteProduct[]
-  feedbacks        Feedback[]
-  campaigns        Campaign[]
-  couriers         Courier[]
+  feedbacks       Feedback[]
+  campaigns       Campaign[]
+  couriers        Courier[]
   menuTranslations MenuTranslation[]
-  settings         BrandSettings?
+  settings        BrandSettings?
 
   @@map("brands")
 }
@@ -97,11 +99,11 @@ model UserSession {
   id           String   @id @default(cuid())
   userId       String
   refreshToken String   @unique
-  deviceInfo   String?
+  deviceInfo   String?   // e.g. "iPhone 15 / iOS 17"
   ipAddress    String?
   userAgent    String?
   expiresAt    DateTime
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -111,7 +113,7 @@ model UserSession {
 model UserAddress {
   id        String   @id @default(cuid())
   userId    String
-  label     String?
+  label     String?   // "Home", "Work"
   street    String
   building  String?
   apartment String?
@@ -134,26 +136,27 @@ model UserAddress {
 // ──────────────────────────────────────────────
 
 model Branch {
-  id              String   @id @default(cuid())
-  brandId         String
-  name            String
-  slug            String
-  address         String
-  phone           String?
-  email           String?
-  latitude        Float?
-  longitude       Float?
-  isOpen          Boolean  @default(true)
-  workSchedule    Json?    // {"mon":"09:00-22:00",...}
-  description     String?
-  imageUrl        String?
-  sortOrder       Int      @default(0)
-  autoConfirm     Boolean  @default(false)
-  acceptingOrders Boolean  @default(true)
-  minOrderAmount  Float    @default(0)
-  prepTimeMinutes Int      @default(30)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            String   @id @default(cuid())
+  brandId       String
+  name          String
+  slug          String
+  address       String
+  phone         String?
+  email         String?
+  latitude      Float?
+  longitude     Float?
+  isOpen             Boolean  @default(true)
+  workSchedule       String?  // JSON: {"mon":"09:00-22:00",...} — NOTE: For PostgreSQL, change to `Json` type
+  description        String?
+  imageUrl           String?
+  sortOrder          Int      @default(0)
+  // 7.6 — Order acceptance settings
+  autoConfirm        Boolean  @default(false)       // auto-accept new orders vs manual confirmation
+  acceptingOrders    Boolean  @default(true)        // quick toggle: accepting orders right now?
+  minOrderAmount     Float    @default(0)           // minimum order amount for delivery
+  prepTimeMinutes    Int      @default(30)          // default estimated preparation time
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
   categories    Category[]
@@ -161,7 +164,8 @@ model Branch {
   deliveryZones DeliveryZone[]
   products      Product[]
   carts         Cart[]
-  feedbacks     Feedback[]
+
+  feedbacks    Feedback[]
 
   @@unique([brandId, slug])
   @@map("branches")
@@ -172,10 +176,10 @@ model DeliveryZone {
   branchId         String
   name             String
   description      String?
-  minOrder         Float    @default(0)
+  minOrder         Float    @default(0)    // minimum order amount
   deliveryFee      Float    @default(0)
   estimatedMinutes Int      @default(30)
-  polygonData      Json?    // polygon coordinates
+  polygonData      String?                   // JSON polygon coordinates — NOTE: For PostgreSQL, change to `Json` type
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -192,7 +196,7 @@ model DeliveryZone {
 model Category {
   id          String   @id @default(cuid())
   brandId     String
-  branchId    String?
+  branchId    String?  // null = brand-wide category
   name        String
   slug        String
   description String?
@@ -214,30 +218,30 @@ model Product {
   id          String   @id @default(cuid())
   brandId     String
   categoryId  String
-  branchId    String?
+  branchId    String?  // null = available at all branches
   name        String
   slug        String
   description String?
   imageUrl    String?
   price       Float
-  weight      String?
+  weight      String?  // e.g. "350г"
   calories    Int?
-  tags        String[] // ["роли","сети","вегетарианское"]
-  allergens   String[] // ["глютен","молоко","орехи"]
+  tags        String?  // JSON array: ["роли","сети","вегетарианское"] — NOTE: For PostgreSQL, change to `String[]` or `Json`
+  allergens   String?  // JSON array: ["глютен","молоко","орехи"] — NOTE: For PostgreSQL, change to `String[]` or `Json`
   isVegetarian Boolean  @default(false)
   isAvailable Boolean  @default(true)
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  brand            Brand               @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  category         Category            @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  branch           Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  optionGroups     ProductOptionGroup[]
-  cartItems        CartItem[]
-  orderItems       OrderItem[]
+  brand         Brand               @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  category      Category            @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  branch        Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  optionGroups  ProductOptionGroup[]
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
   favoriteProducts FavoriteProduct[]
-  reviews          Review[]
+  reviews       Review[]
 
   @@map("products")
 }
@@ -245,9 +249,9 @@ model Product {
 model ProductOptionGroup {
   id         String  @id @default(cuid())
   productId  String
-  name       String
+  name       String  // e.g. "Size", "Spiciness"
   isRequired Boolean @default(false)
-  maxChoices Int     @default(1)
+  maxChoices Int     @default(1)   // 0 = unlimited
   sortOrder  Int     @default(0)
   createdAt  DateTime @default(now())
 
@@ -260,8 +264,8 @@ model ProductOptionGroup {
 model ProductOption {
   id         String  @id @default(cuid())
   groupId    String
-  name       String
-  priceDelta Float   @default(0)
+  name       String  // e.g. "Large +80₴"
+  priceDelta Float   @default(0) // additional cost
   sortOrder  Int     @default(0)
 
   group ProductOptionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
@@ -283,9 +287,8 @@ model FavoriteProduct {
   @@unique([userId, productId])
   @@map("favorite_products")
 }
-
 // ──────────────────────────────────────────────
-//  CART
+//  CART (server-side, per user per brand)
 // ──────────────────────────────────────────────
 
 model Cart {
@@ -310,7 +313,7 @@ model CartItem {
   cartId          String
   productId       String
   quantity        Int      @default(1)
-  selectedOptions Json?    // [{optionId, groupId, name, priceDelta}, ...]
+  selectedOptions String?  // JSON: [{optionId, groupId, name, priceDelta}, ...] — NOTE: For PostgreSQL, change to `Json` type
   totalPrice      Float
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -341,48 +344,58 @@ enum OrderStatus {
 }
 
 model Order {
-  id              String      @id @default(cuid())
-  orderNumber     String      @unique
-  userId          String
-  brandId         String
-  branchId        String
-  type            OrderType
-  status          OrderStatus @default(new)
+  id            String      @id @default(cuid())
+  orderNumber   String      @unique  // human-readable: #1042
+  userId        String
+  brandId       String
+  branchId      String
+  type          OrderType
+  status        OrderStatus @default(new)
 
-  addressSnapshot String?     // JSON of delivery address
-  deliveryFee     Float       @default(0)
+  // Delivery details
+  addressSnapshot   String?  // JSON of delivery address at order time — NOTE: For PostgreSQL, change to `Json` type
+  deliveryFee       Float    @default(0)
 
-  subtotal        Float
-  discount        Float       @default(0)
-  total           Float
+  // Totals
+  subtotal      Float
+  discount      Float    @default(0)
+  total         Float
 
-  note            String?
-  promotionId     String?
-  promotionCode   String?
+  // Customer note
+  note          String?
 
-  bonusUsed       Float       @default(0)
+  // Promotion
+  promotionId   String?
+  promotionCode String?
+
+  // Loyalty
+  bonusUsed     Float    @default(0)
+
+  // Estimated
   estimatedMinutes Int?
 
-  scheduledAt     DateTime?
+  // 8.2 — Scheduled delivery / pre-order
+  scheduledAt    DateTime?  // desired delivery/pickup time
 
-  confirmedAt     DateTime?
-  cookingAt       DateTime?
-  readyAt         DateTime?
-  deliveringAt    DateTime?
-  completedAt     DateTime?
-  cancelledAt     DateTime?
+  // Timeline
+  confirmedAt   DateTime?
+  cookingAt     DateTime?
+  readyAt       DateTime?
+  deliveringAt  DateTime?
+  completedAt   DateTime?
+  cancelledAt   DateTime?
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  user              User              @relation(fields: [userId], references: [id])
-  brand             Brand             @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  branch            Branch            @relation(fields: [branchId], references: [id])
-  promotion         Promotion?        @relation(fields: [promotionId], references: [id])
-  items             OrderItem[]
-  payments          Payment[]
-  reviews           Review[]
-  feedbacks         Feedback[]
+  user      User        @relation(fields: [userId], references: [id])
+  brand     Brand       @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  branch    Branch      @relation(fields: [branchId], references: [id])
+  promotion Promotion?  @relation(fields: [promotionId], references: [id])
+  items     OrderItem[]
+  payments  Payment[]
+  reviews   Review[]
+  feedbacks Feedback[]
   deliveryAssignment DeliveryAssignment?
 
   @@map("orders")
@@ -392,10 +405,10 @@ model OrderItem {
   id              String   @id @default(cuid())
   orderId         String
   productId       String
-  productName     String
-  productPrice    Float
+  productName     String   // snapshot
+  productPrice    Float    // snapshot
   quantity        Int
-  selectedOptions Json?    // JSON snapshot
+  selectedOptions String?  // JSON snapshot — NOTE: For PostgreSQL, change to `Json` type
   totalPrice      Float
   createdAt       DateTime @default(now())
 
@@ -429,8 +442,8 @@ model Payment {
   method          PaymentMethod
   status          PaymentStatus @default(pending)
   amount          Float
-  providerTxId    String?
-  providerPayload Json?
+  providerTxId    String?       // external payment provider transaction ID
+  providerPayload String?       // full webhook payload JSON — NOTE: For PostgreSQL, change to `Json` type
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -444,10 +457,10 @@ model Payment {
 // ──────────────────────────────────────────────
 
 enum PromotionType {
-  percentage
-  fixed
-  free_delivery
-  bonus
+  percentage    // 20% off
+  fixed         // 50₴ off
+  free_delivery // no delivery fee
+  bonus         // +100 bonus points
 }
 
 enum PromotionStatus {
@@ -458,13 +471,13 @@ enum PromotionStatus {
 
 model Promotion {
   id          String         @id @default(cuid())
-  code        String?
+  code        String?        // null = auto-applied
   name        String
   description String?
   type        PromotionType
-  value       Float
+  value       Float          // percentage value, fixed amount, etc.
   minOrder    Float          @default(0)
-  maxUses     Int?
+  maxUses     Int?           // null = unlimited
   usedCount   Int            @default(0)
   startDate   DateTime
   endDate     DateTime
@@ -484,21 +497,21 @@ model Promotion {
 // ──────────────────────────────────────────────
 
 enum LoyaltyTransactionType {
-  earned
-  spent
-  adjusted
+  earned     // from completing order
+  spent      // used for payment
+  adjusted   // manual admin adjustment
   expired
 }
 
 model LoyaltyAccount {
-  id        String              @id @default(cuid())
-  userId    String
-  brandId   String
-  balance   Float               @default(0)
-  lifetime  Float               @default(0)
-  tier      String              @default("bronze")
-  createdAt DateTime            @default(now())
-  updatedAt DateTime            @updatedAt
+  id          String              @id @default(cuid())
+  userId      String
+  brandId     String
+  balance     Float               @default(0)
+  lifetime    Float               @default(0)
+  tier        String              @default("bronze") // bronze, silver, gold
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
 
   user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   brand        Brand                @relation(fields: [brandId], references: [id], onDelete: Cascade)
@@ -533,15 +546,15 @@ model Review {
   brandId     String
   productId   String?
   orderId     String
-  rating      Int
+  rating      Int      // 1-5
   comment     String?
-  isApproved  Boolean  @default(false)
+  isApproved  Boolean  @default(false) // admin moderation
   isAdminReply String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user    User     @relation(fields: [userId], references: [id])
-  brand   Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+  brand    Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
   product  Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
   order    Order    @relation(fields: [orderId], references: [id])
 
@@ -567,30 +580,30 @@ enum FeedbackStatus {
 }
 
 model Feedback {
-  id          String         @id @default(cuid())
-  userId      String?
-  brandId     String
-  branchId    String?
-  orderId     String?
-  type        FeedbackType   @default(general)
-  status      FeedbackStatus @default(new)
-  subject     String?
-  message     String
-  contactInfo String?
-  adminReply  String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id           String         @id @default(cuid())
+  userId       String?
+  brandId      String
+  branchId     String?
+  orderId      String?        // linked order (optional)
+  type         FeedbackType   @default(general)
+  status       FeedbackStatus @default(new)
+  subject      String?
+  message      String
+  contactInfo  String?        // phone/email provided by user
+  adminReply   String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
-  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
-  brand  Brand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  order  Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  brand   Brand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  branch  Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
 
   @@map("feedbacks")
 }
 
 // ──────────────────────────────────────────────
-//  CAMPAIGNS & WIN-BACK
+//  8.3 — CAMPAIGNS & WIN-BACK
 // ──────────────────────────────────────────────
 
 enum CampaignType {
@@ -607,130 +620,130 @@ enum CampaignStatus {
 }
 
 model Campaign {
-  id            String         @id @default(cuid())
-  brandId       String
-  name          String
-  type          CampaignType
-  status        CampaignStatus @default(draft)
-  subject       String
-  body          String
-  targetSegment String?
-  channel       String         @default("telegram")
-  sentCount     Int            @default(0)
-  openedCount   Int            @default(0)
-  clickedCount  Int            @default(0)
-  scheduledAt   DateTime?
-  startedAt     DateTime?
-  completedAt   DateTime?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id              String         @id @default(cuid())
+  brandId         String
+  name            String
+  type            CampaignType
+  status          CampaignStatus @default(draft)
+  subject         String
+  body            String         // message body (template, may include {name}, {bonusBalance}, etc.)
+  targetSegment   String?        // all, new, inactive_7d, inactive_14d, inactive_30d, high_value
+  channel         String         @default("telegram") // telegram, email, sms, push
+  sentCount       Int            @default(0)
+  openedCount     Int            @default(0)
+  clickedCount    Int            @default(0)
+  scheduledAt     DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
-  brand    Brand            @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  messages CampaignMessage[]
+  brand           Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  messages        CampaignMessage[]
 
   @@map("campaigns")
 }
 
 model CampaignMessage {
-  id         String   @id @default(cuid())
-  campaignId String
-  userId     String
-  channel    String
-  status     String   @default("pending")
-  sentAt     DateTime?
-  openedAt   DateTime?
-  createdAt  DateTime @default(now())
+  id           String   @id @default(cuid())
+  campaignId   String
+  userId       String
+  channel      String
+  status       String   @default("pending") // pending, sent, failed, opened, clicked
+  sentAt       DateTime?
+  openedAt     DateTime?
+  createdAt    DateTime @default(now())
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@map("campaign_messages")
 }
 
 // ──────────────────────────────────────────────
-//  COURIERS & DELIVERY ASSIGNMENTS
+//  9.1 — COURIERS & DELIVERY ASSIGNMENTS
 // ──────────────────────────────────────────────
 
 model Courier {
-  id        String   @id @default(cuid())
-  brandId   String
-  name      String
-  phone     String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  brandId     String
+  name        String
+  phone       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  brand              Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  brand           Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
   deliveryAssignments DeliveryAssignment[]
 
   @@map("couriers")
 }
 
 model DeliveryAssignment {
-  id          String   @id @default(cuid())
-  orderId     String   @unique
-  courierId   String
-  status      String   @default("assigned")
-  assignedAt  DateTime @default(now())
-  pickedUpAt  DateTime?
-  deliveredAt DateTime?
-  createdAt   DateTime @default(now())
+  id           String   @id @default(cuid())
+  orderId      String   @unique
+  courierId    String
+  status       String   @default("assigned")  // assigned, picked_up, delivered
+  assignedAt   DateTime @default(now())
+  pickedUpAt   DateTime?
+  deliveredAt  DateTime?
+  createdAt    DateTime @default(now())
 
-  order   Order   @relation(fields: [orderId], references: [id])
-  courier Courier @relation(fields: [courierId], references: [id], onDelete: Cascade)
+  order        Order    @relation(fields: [orderId], references: [id])
+  courier      Courier  @relation(fields: [courierId], references: [id], onDelete: Cascade)
 
   @@map("delivery_assignments")
 }
 
 // ──────────────────────────────────────────────
-//  MENU TRANSLATIONS
+//  9.3 — MENU TRANSLATIONS
 // ──────────────────────────────────────────────
 
 model MenuTranslation {
   id          String   @id @default(cuid())
   brandId     String
-  locale      String
-  entityType  String
-  entityId    String
+  locale      String   // 'uk', 'ru', 'en'
+  entityType  String   // 'Product', 'Category'
+  entityId    String   // the ID of the Product or Category
   name        String?
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  brand       Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
 
   @@unique([brandId, locale, entityType, entityId])
   @@map("menu_translations")
 }
 
 // ──────────────────────────────────────────────
-//  BRAND SETTINGS / FEATURE FLAGS
+//  14.1 — BRAND SETTINGS / FEATURE FLAGS
 // ──────────────────────────────────────────────
 
 model BrandSettings {
-  id                    String   @id @default(cuid())
-  brandId               String   @unique
-  enableGuestOrders     Boolean  @default(true)
-  enableScheduledOrders Boolean  @default(true)
-  enableLoyalty         Boolean  @default(true)
-  enableReviews         Boolean  @default(true)
-  enableDelivery        Boolean  @default(true)
-  enablePickup          Boolean  @default(true)
-  enablePromotions      Boolean  @default(true)
-  enableRecommendations Boolean  @default(true)
-  enableSearch          Boolean  @default(true)
-  enableFavorites       Boolean  @default(true)
-  requirePhone          Boolean  @default(true)
-  requireAddress        Boolean  @default(true)
-  showTips              Boolean  @default(false)
-  enableApplePay        Boolean  @default(true)
+  id                  String   @id @default(cuid())
+  brandId             String   @unique
+  enableGuestOrders   Boolean  @default(true)
+  enableScheduledOrders Boolean @default(true)
+  enableLoyalty       Boolean  @default(true)
+  enableReviews       Boolean  @default(true)
+  enableDelivery      Boolean  @default(true)
+  enablePickup        Boolean  @default(true)
+  enablePromotions    Boolean  @default(true)
+  enableRecommendations Boolean @default(true)
+  enableSearch        Boolean  @default(true)
+  enableFavorites     Boolean  @default(true)
+  requirePhone        Boolean  @default(true)
+  requireAddress      Boolean  @default(true)
+  showTips            Boolean  @default(false)
+  enableApplePay      Boolean  @default(true)
   enableDeliveryFeatures Boolean @default(true)
-  enableCampaigns       Boolean  @default(true)
-  enableTranslations    Boolean  @default(false)
-  loyaltyRate           Float    @default(5)
-  loyaltyMinSpend       Float    @default(0)
+  enableCampaigns     Boolean  @default(true)
+  enableTranslations  Boolean  @default(false)
+  loyaltyRate         Float    @default(5)
+  loyaltyMinSpend     Float    @default(0)
   loyaltyMaxBonusPayment Float  @default(50)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
 

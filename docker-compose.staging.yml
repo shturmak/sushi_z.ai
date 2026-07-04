@@ -1,36 +1,62 @@
 # =============================================================================
 # SushiChain — Staging Docker Compose
 # =============================================================================
-# Usage:
-#   cp .env.staging .env    # fill in real DATABASE_URL
+# Usage (with local PostgreSQL):
 #   docker compose -f docker-compose.staging.yml up -d --build
 #
-# For local PostgreSQL (without Supabase):
-#   Uncomment the 'db' service below and set
-#   DATABASE_URL=postgresql://sushichain:sushi@db:5432/sushichain_staging
+# Usage (with external Supabase/Railway):
+#   Set DATABASE_URL in .env.staging to your external PG connection
+#   Comment out the 'db' service below
 # =============================================================================
 
 services:
   # ---------------------------------------------------------------------------
-  # Next.js Application (Staging)
+  # PostgreSQL 16 (local — comment out if using Supabase/Railway)
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: sushichain-staging-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sushichain}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sushichain_staging}
+      POSTGRES_DB: ${POSTGRES_DB:-sushichain_staging}
+    volumes:
+      - postgres_staging:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sushichain} -d ${POSTGRES_DB:-sushichain_staging}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - staging
+
+  # ---------------------------------------------------------------------------
+  # Next.js Application
   # ---------------------------------------------------------------------------
   app:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        ENV: staging
     container_name: sushichain-staging
     restart: unless-stopped
     env_file:
-      - .env
+      - .env.staging
     environment:
       NODE_ENV: staging
       PORT: "3000"
       HOSTNAME: "0.0.0.0"
       LOG_LEVEL: debug
+      # Override DATABASE_URL to point to Docker postgres (if using local PG)
+      # DATABASE_URL: postgresql://${POSTGRES_USER:-sushichain}:${POSTGRES_PASSWORD:-sushichain_staging}@db:5432/${POSTGRES_DB:-sushichain_staging}?schema=public
     ports:
       - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
       - app_uploads_staging:/app/public/uploads
     healthcheck:
@@ -42,35 +68,11 @@ services:
     networks:
       - staging
 
-  # ---------------------------------------------------------------------------
-  # Optional: Local PostgreSQL (comment out if using Supabase)
-  # ---------------------------------------------------------------------------
-  # db:
-  #   image: postgres:16-alpine
-  #   container_name: sushichain-staging-db
-  #   restart: unless-stopped
-  #   environment:
-  #     POSTGRES_USER: sushichain
-  #     POSTGRES_PASSWORD: sushi
-  #     POSTGRES_DB: sushichain_staging
-  #   volumes:
-  #     - postgres_staging:/var/lib/postgresql/data
-  #   ports:
-  #     - "5432:5432"
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U sushichain -d sushichain_staging"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
-  #     start_period: 10s
-  #   networks:
-  #     - staging
-
 volumes:
+  postgres_staging:
+    driver: local
   app_uploads_staging:
     driver: local
-  # postgres_staging:
-  #   driver: local
 
 networks:
   staging:

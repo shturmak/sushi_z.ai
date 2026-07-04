@@ -73,7 +73,7 @@ datasource db {
 }
 ```
 
-Also change JSON string fields to native `Json` type (see `prisma/schema.postgresql.prisma` for reference):
+Also ensure JSON string fields use native `Json` type (see `prisma/schema.prisma` for reference):
 - `Branch.workSchedule`: `String?` → `Json?`
 - `DeliveryZone.polygonData`: `String?` → `Json?`
 - `CartItem.selectedOptions`: `String?` → `Json?`

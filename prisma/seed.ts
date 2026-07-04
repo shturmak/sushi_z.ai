@@ -2,7 +2,7 @@ import { PrismaClient, OrderStatus, OrderType, PaymentMethod, PaymentStatus, Pro
 
 const prisma = new PrismaClient();
 
-const WORK_SCHEDULE = JSON.stringify({
+const WORK_SCHEDULE = {
   mon: '10:00-22:00',
   tue: '10:00-22:00',
   wed: '10:00-22:00',
@@ -10,7 +10,7 @@ const WORK_SCHEDULE = JSON.stringify({
   fri: '10:00-23:00',
   sat: '10:00-23:00',
   sun: '11:00-21:00',
-});
+};
 
 async function seed() {
   console.log('🌱 Seeding database...');
@@ -1057,7 +1057,7 @@ async function seed() {
       branchId: sushiBranch1.id,
       type: OrderType.delivery,
       status: OrderStatus.completed,
-      addressSnapshot: JSON.stringify({ street: 'вул. Хрещатик', building: '22', apartment: '15' }),
+      addressSnapshot: { street: 'вул. Хрещатик', building: '22', apartment: '15' },
       deliveryFee: 50,
       subtotal: 189 + 169 + 59,
       discount: 83.4,

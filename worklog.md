@@ -1331,3 +1331,40 @@ Stage Summary:
 - Complete migration workflow documentation in Ukrainian
 - Covers dev, staging, production, rollbacks, and troubleshooting
 - Includes copy-paste ready commands and a Quick Reference card
+---
+Task ID: 1
+Agent: main
+Task: Prepare project for first safe PostgreSQL migration
+
+Work Log:
+- Read and analyzed both Prisma schemas (SQLite schema.prisma and PostgreSQL schema.postgresql.prisma)
+- Identified 9 type differences (String? vs Json?, String? vs String[])
+- Identified old SQLite migration was incomplete (missing 9 tables, missing columns)
+- Promoted PostgreSQL schema to canonical schema.prisma
+- Saved old SQLite schema as prisma/schema.sqlite.prisma with clear dev-only warning header
+- Added 30+ performance indexes to canonical schema (@@index on brandId, userId, orderId, etc.)
+- Added @@unique([brandId, code]) on Promotion (was missing)
+- Deleted redundant schema.postgresql.prisma
+- Deleted old SQLite migration directory and migration_lock.toml
+- Deleted prisma/dev.db
+- Fixed seed.ts: JSON.stringify → plain objects for Json fields (workSchedule, addressSnapshot)
+- Created docker-compose.dev.yml for local PostgreSQL dev
+- Rewrote all .env files (.env, .env.development, .env.staging, .env.production, .env.example)
+- Updated .gitignore: allow .env.example, add prisma/*.db
+- Simplified package.json scripts: removed all --schema flags, added db:seed, db:push:sqlite, db:dev:start/stop/reset, pre-migration-check
+- Simplified Dockerfile: removed schema selection ENV logic
+- Updated docker-compose.staging.yml: added local PG service
+- Updated migration scripts (migrate-staging.sh, migrate-production.sh, setup-staging-db.sh): removed --schema flags
+- Created scripts/pre-migration-check.ts (12 checks)
+- Rewrote docs/MIGRATION_WORKFLOW.md (12 sections, Ukrainian)
+- Created docs/ENVIRONMENT_VARIABLES.md (complete reference)
+- Created docs/STAGING_SETUP.md (replaces old STAGING.md)
+- Removed old docs/STAGING.md (superseded)
+- Fixed references in docs/DEPLOYMENT_PROD.md and docs/DEPLOYMENT.md
+- Verified: prisma validate passes, prisma generate passes, bun run lint passes
+
+Stage Summary:
+- Canonical schema: prisma/schema.prisma (PostgreSQL, 27 tables, 11 enums, 30+ indexes)
+- Dev schema: prisma/schema.sqlite.prisma (SQLite, dev-only convenience)
+- Project is ready for first migration but migration NOT executed
+- First migration command: docker compose -f docker-compose.dev.yml up -d && bun run db:migrate --name init

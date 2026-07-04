@@ -6,7 +6,6 @@
 
 set -euo pipefail
 
-SCHEMA="prisma/schema.postgresql.prisma"
 ENV_FILE=".env.staging"
 
 # ─── Check required tools ───────────────────────────────────
@@ -27,19 +26,19 @@ fi
 echo "=== Staging Migration Deploy ==="
 echo ""
 
-# Step 1: Validate PostgreSQL schema
-echo "[1/4] Validating PostgreSQL schema..."
-bunx prisma validate --schema="$SCHEMA"
+# Step 1: Validate schema
+echo "[1/4] Validating schema..."
+bunx prisma validate
 echo "  Schema is valid."
 
 # Step 2: Generate Prisma client
 echo "[2/4] Generating Prisma client..."
-bunx prisma generate --schema="$SCHEMA"
+bunx prisma generate
 echo "  Client generated."
 
 # Step 3: Show migration status
 echo "[3/4] Checking migration status..."
-bunx prisma migrate status --schema="$SCHEMA" || true
+bunx prisma migrate status || true
 echo ""
 
 # Step 4: Confirm and deploy
@@ -51,7 +50,7 @@ if [[ "$confirm" != [yY] ]]; then
 fi
 
 echo "Deploying migrations..."
-bunx prisma migrate deploy --schema="$SCHEMA"
+bunx prisma migrate deploy
 
 echo ""
 echo "=== Staging migration complete ==="

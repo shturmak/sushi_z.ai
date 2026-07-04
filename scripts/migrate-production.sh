@@ -8,7 +8,6 @@
 
 set -euo pipefail
 
-SCHEMA="prisma/schema.postgresql.prisma"
 ENV_FILE=".env.production"
 DRY_RUN=false
 
@@ -37,7 +36,6 @@ echo ""
 
 # ─── Safety checks ──────────────────────────────────────────
 
-# Warn if on main branch (should deploy from release/tag, not directly)
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   BRANCH="$(git branch --show-current 2>/dev/null || echo 'detached')"
   if [[ "$BRANCH" == "main" ]]; then
@@ -47,7 +45,6 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   fi
 fi
 
-# Warn if there are uncommitted changes
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   if ! git diff --quiet 2>/dev/null; then
     echo "WARNING: You have uncommitted changes in your working directory."
@@ -55,19 +52,19 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   fi
 fi
 
-# Step 1: Validate PostgreSQL schema
-echo "[1/5] Validating PostgreSQL schema..."
-bunx prisma validate --schema="$SCHEMA"
+# Step 1: Validate schema
+echo "[1/5] Validating schema..."
+bunx prisma validate
 echo "  Schema is valid."
 
 # Step 2: Generate Prisma client
 echo "[2/5] Generating Prisma client..."
-bunx prisma generate --schema="$SCHEMA"
+bunx prisma generate
 echo "  Client generated."
 
 # Step 3: Show migration status
 echo "[3/5] Checking migration status..."
-bunx prisma migrate status --schema="$SCHEMA" || true
+bunx prisma migrate status || true
 echo ""
 
 # Step 4: Dry-run check
@@ -94,7 +91,7 @@ echo ""
 
 # Step 5: Deploy
 echo "[5/5] Deploying migrations to production..."
-bunx prisma migrate deploy --schema="$SCHEMA"
+bunx prisma migrate deploy
 
 echo ""
 echo "=== Production migration complete ==="
