@@ -17,7 +17,11 @@
     "db:migrate:pg": "prisma migrate dev --schema=prisma/schema.postgresql.prisma",
     "db:backup": "bun run scripts/backup-db.ts",
     "db:backup:list": "bun run scripts/backup-db.ts --list",
-    "db:restore": "bun run scripts/backup-db.ts --restore"
+    "db:restore": "bun run scripts/backup-db.ts --restore",
+    "migrate:staging": "bash scripts/migrate-staging.sh",
+    "migrate:prod": "bash scripts/migrate-production.sh",
+    "setup:staging": "bash scripts/setup-staging-db.sh",
+    "db:validate:pg": "bunx prisma validate --schema=prisma/schema.postgresql.prisma"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

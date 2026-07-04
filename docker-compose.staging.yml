@@ -1,14 +1,13 @@
 # =============================================================================
-# SushiChain — Staging Docker Compose Override
+# SushiChain — Staging Docker Compose
 # =============================================================================
 # Usage:
-#   cp .env.example .env.staging   # then fill in staging values
-#   docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+#   cp .env.staging .env    # fill in real DATABASE_URL
+#   docker compose -f docker-compose.staging.yml up -d --build
 #
-# This file extends the production compose with staging-specific settings:
-#   - Debug logging enabled
-#   - Exposes debug ports
-#   - Uses staging env file
+# For local PostgreSQL (without Supabase):
+#   Uncomment the 'db' service below and set
+#   DATABASE_URL=postgresql://sushichain:sushi@db:5432/sushichain_staging
 # =============================================================================
 
 services:
@@ -19,45 +18,60 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: sushichain-app-staging
+      args:
+        ENV: staging
+    container_name: sushichain-staging
+    restart: unless-stopped
     env_file:
-      - .env.staging
+      - .env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-sushichain}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-sushichain_staging}?schema=public
       NODE_ENV: staging
-      LOG_LEVEL: debug
       PORT: "3000"
       HOSTNAME: "0.0.0.0"
-    # Expose Node.js inspector for debugging
+      LOG_LEVEL: debug
     ports:
       - "3000:3000"
-      - "9229:9229"
-    command: >
-      sh -c "npx prisma migrate deploy --schema=prisma/schema.postgresql.prisma && node --inspect=0.0.0.0:9229 server.js"
+    volumes:
+      - app_uploads_staging:/app/public/uploads
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    networks:
+      - staging
 
   # ---------------------------------------------------------------------------
-  # PostgreSQL (Staging)
+  # Optional: Local PostgreSQL (comment out if using Supabase)
   # ---------------------------------------------------------------------------
-  postgres:
-    container_name: sushichain-postgres-staging
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-sushichain}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
-      POSTGRES_DB: ${POSTGRES_DB:-sushichain_staging}
-    # Expose Postgres port for external tools (pgAdmin, DBeaver, etc.)
-    ports:
-      - "5432:5432"
-    command: >
-      postgres
-        -c log_statement=all
-        -c log_min_duration_statement=0
-        -c log_connections=yes
-        -c log_disconnections=yes
+  # db:
+  #   image: postgres:16-alpine
+  #   container_name: sushichain-staging-db
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: sushichain
+  #     POSTGRES_PASSWORD: sushi
+  #     POSTGRES_DB: sushichain_staging
+  #   volumes:
+  #     - postgres_staging:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U sushichain -d sushichain_staging"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 10s
+  #   networks:
+  #     - staging
 
-  # ---------------------------------------------------------------------------
-  # Nginx (Staging)
-  # ---------------------------------------------------------------------------
-  nginx:
-    container_name: sushichain-nginx-staging
-    ports:
-      - "8080:80"
+volumes:
+  app_uploads_staging:
+    driver: local
+  # postgres_staging:
+  #   driver: local
+
+networks:
+  staging:
+    driver: bridge

@@ -1272,3 +1272,62 @@ Work Log:
 Stage Summary:
 - Complete mobile documentation: architecture, API SDK, publishing guides
 - TypeScript type definitions for mobile API client development
+
+---
+Task ID: 5
+Agent: middleware-builder
+Task: Update brand routing middleware for staging domains
+
+Work Log:
+- Updated src/middleware.ts to handle multi-level BRAND_DOMAIN
+- Added debug header for non-production environments
+- Verified logic for production, staging, and local domains
+
+Stage Summary:
+- Middleware works with both sushichain.ua and staging.sushichain.ua
+- Correct subdomain extraction for all domain configurations
+
+---
+Task ID: 3
+Agent: cicd-builder
+Task: Create CI/CD workflow and migration scripts
+
+Work Log:
+- Created .github/workflows/ci.yml with lint, test, validate-schema, deploy-staging jobs
+- Created scripts/migrate-staging.sh — validates PG schema, generates client, shows status, confirms, runs migrate deploy
+- Created scripts/migrate-production.sh — same with extra safety: branch warning, uncommitted changes warning, double-confirmation (type 'production'), --dry-run option
+- Created scripts/setup-staging-db.sh — first-time staging setup with schema validation, migration creation, migrate deploy, seed, table verification
+- Updated package.json with migrate:staging, migrate:prod, setup:staging, db:validate:pg scripts
+- All shell scripts use set -euo pipefail and check for required tools (bun, prisma)
+- Verified `bun run lint` passes cleanly
+
+Stage Summary:
+- GitHub Actions CI/CD pipeline with 4 jobs: lint → test + validate-schema → deploy-staging
+- Manual migration scripts for staging (y/N confirm) and production (type 'production' confirm + dry-run)
+- First-time staging DB setup script with seed and table verification
+- package.json updated with 4 new convenience scripts
+
+---
+Task ID: 6
+Agent: migration-docs-builder
+Task: Create migration workflow documentation
+
+Work Log:
+- Created docs/MIGRATION_WORKFLOW.md with 10 sections
+- Section 1: Overview of dual-schema architecture (SQLite dev + PostgreSQL staging/prod)
+- Section 2: Local development with db:push and migrate dev
+- Section 3: Pre-commit validation (validate, SQL review, local PG test)
+- Section 4: Commit and push rules (never edit existing migrations)
+- Section 5: Staging deploy via CI/CD or manual migrate deploy
+- Section 6: Staging verification checklist (admin panel, order flow, new columns)
+- Section 7: Production deploy (backup first, staging first, then production)
+- Section 8: Rollback procedure (resolve --rolled-back, create undo migration, pg_restore)
+- Section 9: First deploy / initial setup with seed data details
+- Section 10: Troubleshooting (conflicts, failed migrations, NOT NULL, renames, enums, data migrations)
+- Added Quick Reference card at the end with all commands
+- Appended worklog entry
+
+Stage Summary:
+- Complete migration workflow documentation in Ukrainian
+- Covers dev, staging, production, rollbacks, and troubleshooting
+- Includes copy-paste ready commands and a Quick Reference card

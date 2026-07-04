@@ -14,30 +14,35 @@ const PATH_PREFIX_RE = /^\/b\/([a-z0-9]+(?:-[a-z0-9]+)*)\/(.*)$/i
 
 /**
  * Extract brand slug from subdomain.
- * e.g. "sushi-master.sushichain.ua" → "sushi-master"
- * Returns undefined for bare domain or reserved subdomains.
+ * Supports multi-level BRAND_DOMAIN values:
+ *   Production: BRAND_DOMAIN=sushichain.ua → "sushi-master.sushichain.ua" → "sushi-master"
+ *   Staging:   BRAND_DOMAIN=staging.sushichain.ua → "sushi-master.staging.sushichain.ua" → "sushi-master"
+ *   Local:     BRAND_DOMAIN=localhost → "localhost:3000" → undefined (pass through)
+ * Returns undefined for bare domain, reserved subdomains, or non-matching hosts.
  */
 function slugFromSubdomain(hostname: string): string | undefined {
   // Remove port if present (e.g. "localhost:3000")
   const host = hostname.split(':')[0]
 
-  // Check if hostname ends with the brand domain
   const domainParts = BRAND_DOMAIN.split('.')
   const hostParts = host.split('.')
 
-  // Host must have more parts than the base domain to have a subdomain
-  if (hostParts.length <= domainParts.length) {
+  // Host must have *exactly* one more part than BRAND_DOMAIN to extract a brand slug.
+  // This ensures we only match a single subdomain level, e.g.
+  //   sushi-master.staging.sushichain.ua  (4 parts) vs staging.sushichain.ua (3 parts) ✓
+  //   staging.sushichain.ua                (3 parts) vs staging.sushichain.ua (3 parts) ✗ (brand picker)
+  //   a.b.c.staging.sushichain.ua          (6 parts) vs staging.suchichain.ua  (3 parts) ✗ (too deep)
+  if (hostParts.length !== domainParts.length + 1) {
     return undefined
   }
 
-  // Verify the domain suffix matches
+  // Verify the domain suffix matches BRAND_DOMAIN exactly
   const suffix = hostParts.slice(-domainParts.length).join('.')
   if (suffix !== BRAND_DOMAIN) {
     return undefined
   }
 
-  // Everything before the domain is the subdomain chain (e.g. "sushi-master" or "a.b")
-  // We only use the first (leftmost) part
+  // The single subdomain part is the first (and only extra) element
   const subdomain = hostParts[0]
 
   if (RESERVED_SUBDOMAINS.has(subdomain.toLowerCase())) {
@@ -104,19 +109,43 @@ export function middleware(request: NextRequest) {
     brandSlug = slugFromQuery(request)
   }
 
-  // ── 2. No brand found → let request pass through unchanged ─────────
+  // ── 2. Build debug info (non-production only) ─────────────────────
 
-  if (!brandSlug) {
-    return NextResponse.next()
+  const isProduction = process.env.NODE_ENV === 'production'
+  const hostHeader = request.headers.get('host') || ''
+  const debugInfo = {
+    brandDomain: BRAND_DOMAIN,
+    host: hostHeader,
+    brandSlug: brandSlug ?? null,
+    source: !brandSlug
+      ? 'none'
+      : pathMatch
+        ? 'path'
+        : slugFromSubdomain(hostHeader)
+          ? 'subdomain'
+          : 'query',
   }
 
-  // ── 3. Brand found → set header and optionally rewrite ─────────────
+  // ── 3. No brand found → let request pass through unchanged ─────────
+
+  if (!brandSlug) {
+    const response = NextResponse.next()
+    if (!isProduction) {
+      response.headers.set('x-brand-debug', JSON.stringify(debugInfo))
+    }
+    return response
+  }
+
+  // ── 4. Brand found → set header and optionally rewrite ─────────────
 
   const response = shouldRewrite && rewrittenPath !== undefined
     ? NextResponse.rewrite(new URL(rewrittenPath, request.url))
     : NextResponse.next()
 
   response.headers.set('x-brand-slug', brandSlug)
+  if (!isProduction) {
+    response.headers.set('x-brand-debug', JSON.stringify(debugInfo))
+  }
 
   return response
 }
