@@ -5,7 +5,7 @@
 import { db } from '@/lib/db';
 
 export async function validatePromotion(code: string, subtotal: number) {
-  const promo = await db.promotion.findUnique({ where: { code } });
+  const promo = await db.promotion.findFirst({ where: { code } });
   if (!promo) return { valid: false as const, error: 'Промокод не знайдено' };
 
   const now = new Date();

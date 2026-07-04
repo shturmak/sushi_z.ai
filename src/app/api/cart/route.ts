@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const authUser = await requireAuth();
 
-    const cart = await db.cart.findUnique({
+    const cart = await db.cart.findFirst({
       where: { userId: authUser.userId },
       include: {
         branch: true,
@@ -54,7 +54,9 @@ export async function POST(request: NextRequest) {
       return apiNotFound('Branch not found');
     }
 
-    const existing = await db.cart.findUnique({ where: { userId: authUser.userId } });
+    const brandId = branch.brandId;
+
+    const existing = await db.cart.findUnique({ where: { userId_brandId: { userId: authUser.userId, brandId } } });
     if (existing) {
       return apiError('CONFLICT', 'Cart already exists. Clear it first or use the existing one.', 409);
     }
@@ -62,6 +64,7 @@ export async function POST(request: NextRequest) {
     const cart = await db.cart.create({
       data: {
         userId: authUser.userId,
+        brandId,
         branchId,
       },
       include: { branch: true, items: true },
@@ -79,7 +82,7 @@ export async function DELETE() {
   try {
     const authUser = await requireAuth();
 
-    const cart = await db.cart.findUnique({ where: { userId: authUser.userId } });
+    const cart = await db.cart.findFirst({ where: { userId: authUser.userId } });
     if (!cart) {
       return apiSuccess(null, 'No cart to clear');
     }

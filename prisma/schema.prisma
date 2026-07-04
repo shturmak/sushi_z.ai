@@ -48,6 +48,7 @@ model Brand {
   campaigns       Campaign[]
   couriers        Courier[]
   menuTranslations MenuTranslation[]
+  settings        BrandSettings?
 
   @@map("brands")
 }
@@ -701,4 +702,39 @@ model MenuTranslation {
 
   @@unique([brandId, locale, entityType, entityId])
   @@map("menu_translations")
+}
+
+// ──────────────────────────────────────────────
+//  14.1 — BRAND SETTINGS / FEATURE FLAGS
+// ──────────────────────────────────────────────
+
+model BrandSettings {
+  id                  String   @id @default(cuid())
+  brandId             String   @unique
+  enableGuestOrders   Boolean  @default(true)
+  enableScheduledOrders Boolean @default(true)
+  enableLoyalty       Boolean  @default(true)
+  enableReviews       Boolean  @default(true)
+  enableDelivery      Boolean  @default(true)
+  enablePickup        Boolean  @default(true)
+  enablePromotions    Boolean  @default(true)
+  enableRecommendations Boolean @default(true)
+  enableSearch        Boolean  @default(true)
+  enableFavorites     Boolean  @default(true)
+  requirePhone        Boolean  @default(true)
+  requireAddress      Boolean  @default(true)
+  showTips            Boolean  @default(false)
+  enableApplePay      Boolean  @default(true)
+  enableDeliveryFeatures Boolean @default(true)
+  enableCampaigns     Boolean  @default(true)
+  enableTranslations  Boolean  @default(false)
+  loyaltyRate         Float    @default(5)
+  loyaltyMinSpend     Float    @default(0)
+  loyaltyMaxBonusPayment Float  @default(50)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@map("brand_settings")
 }

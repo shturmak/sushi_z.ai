@@ -1,0 +1,92 @@
+# =============================================================================
+# SushiChain — .dockerignore
+# Excludes files not needed in the Docker build context
+# =============================================================================
+
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build output (recreated inside container)
+.next
+out
+dist
+build
+
+# Environment files (injected at runtime, not build time)
+.env
+.env.local
+.env.staging
+.env.production
+.env.*.local
+
+# Version control
+.git
+.gitignore
+
+# IDE / Editor
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Documentation
+docs/
+*.md
+!README.md
+ROADMAP.md
+CHANGELOG.md
+CONTRIBUTING.md
+
+# Testing
+tests/
+coverage/
+.nyc_output
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# Misc
+skills/
+examples/
+download/
+*.log
+*.png
+*.jpg
+!public/**/*.png
+!public/**/*.jpg
+!public/**/*.svg
+!public/**/*.ico
+
+# Database
+db/
+*.db
+*.db-journal
+prisma/migrations/
+
+# Nginx (mounted separately)
+nginx/
+
+# Mini-services (not part of main app container)
+mini-services/
+
+# Scripts (not needed at runtime)
+scripts/
+
+# Caddy / other dev tools
+Caddyfile
+auto-restart.sh
+start-dev.sh
+run-server.sh

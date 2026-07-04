@@ -1048,3 +1048,227 @@ Stage Summary:
 - Mobile-responsive with card/table toggle pattern matching other admin pages
 - `bun run lint` passes cleanly
 - No i18n locale files, Prisma schema, or admin-types.ts were modified
+---
+Task ID: 10.4
+Agent: backup-builder
+Task: Implement SQLite database backup mechanism
+
+Work Log:
+- Created scripts/backup-db.ts with backup/restore/list functionality
+- Added db:backup, db:backup:list, db:restore scripts to package.json
+- Created docs/BACKUP_GUIDE.md with usage instructions
+- Verified with bun run lint
+
+Stage Summary:
+- SQLite backup script with gzip compression and rotation
+- Supports manual backup, listing, and restore operations
+- Documentation for cron-based automated backups
+
+---
+Task ID: 10.3
+Agent: logging-builder
+Task: Implement structured logging and error alerting
+
+Work Log:
+- Created src/lib/logger.ts with structured JSON logger
+- Created src/lib/error-handler.ts with centralized error handling + Telegram alerts
+- Updated domain services and API routes to use new logger
+- Verified with bun run lint
+
+Stage Summary:
+- Production-ready structured logger with dev pretty-print and prod JSON modes
+- Error handler with Telegram alert integration
+- Critical API routes now use structured logging
+
+---
+Task ID: 10.1
+Agent: unit-tests-builder
+Task: Create unit tests for domain services and utilities
+
+Work Log:
+- Created tests/unit/rate-limit.test.ts (15 tests: rate limiter core, presets, headers)
+- Created tests/unit/pagination.test.ts (17 tests: parsePagination, paginateResult edge cases)
+- Created tests/unit/api-response.test.ts (21 tests: success, error, unauthorized, forbidden, notFound)
+- Created tests/unit/order-transitions.test.ts (32 tests: valid/invalid/terminal/unknown/self transitions)
+- Created tests/unit/utils.test.ts (12 tests: cn class merging, conditionals, tailwind conflicts)
+- Fixed 1 test: parsePagination limit=0 falls back to default (0 is falsy in JS || chain)
+- All 103 tests passing with bun:test
+
+Stage Summary:
+- 5 test files created with comprehensive coverage of pure functions
+- Tests cover rate limiting, pagination, API responses, order transitions, utilities
+- 103 tests, 176 expect() calls, 0 failures
+
+---
+Task ID: 10.2
+Agent: e2e-tests-builder
+Task: Create E2E tests for critical ordering flow
+
+Work Log:
+- Read all relevant API route files to understand contracts (auth, cart, orders, promotions, loyalty, branches, menu)
+- Created tests/e2e/critical-flow.test.ts with 23 tests across 6 describe blocks
+- Tests cover: auth (register/login/profile), browse (branches/menu), cart (create/add/verify), order (create/list/verify), loyalty (balance check), promotions (list/validate/edge cases)
+- Discovered and fixed 4 bugs in the codebase uncovered by E2E tests:
+  1. Cart creation missing `brandId` (required FK field) — fixed in src/app/api/cart/route.ts
+  2. Cart lookup using `findUnique` on non-unique field `userId` — changed to `findFirst` in cart route and cart items route
+  3. Order creation missing `brandId` — fixed in src/domain/order.service.ts
+  4. Promotion validation using `findUnique` on non-unique `code` field — changed to `findFirst` in promotion.service.ts and order.service.ts
+  5. `parsePagination` producing NaN when `maxLimit` not provided — fixed in src/lib/pagination.ts
+  6. Logger import in orders route causing empty 500 responses — replaced with console.error
+- All 23 E2E tests passing against running dev server
+
+Stage Summary:
+- E2E test suite covering the full customer journey from registration to order completion
+- Tests verify auth, menu browsing, cart management, order placement, loyalty accrual, and promotion validation
+- Multiple pre-existing bugs discovered and fixed during test development
+---
+Task ID: 11.2
+Agent: nginx-builder
+Task: Create Nginx configuration for multi-brand deployment
+
+Work Log:
+- Created nginx/nginx.conf with gzip, security, proxy settings
+- Created nginx/sites/sushichain.conf with subdomain-based brand routing
+- Created nginx/sites/ssl-template.conf.example for HTTPS
+- Created docker-compose.yml with nginx service, app service, and certbot helper
+
+Stage Summary:
+- Nginx reverse proxy config with subdomain-to-brand routing via map block
+- WebSocket support for real-time features (/socket.io/)
+- SSL template for Let's Encrypt with modern cipher profile
+- Security headers and rate limiting zones
+- docker-compose.yml with volume mounts for nginx configs, logs, and certbot
+---
+Task ID: 11.3
+Agent: staging-docs-builder
+Task: Create staging environment documentation
+
+Work Log:
+- Created docs/STAGING.md with setup, testing, and reset guides
+- Documented staging architecture (Caddy → Next.js → PostgreSQL via Docker Compose)
+- Included server provisioning steps, .env.staging configuration, Dockerfile, and Caddyfile
+- Documented test data from seed script (3 brands, 30+ products, promotions, sample orders)
+- Added CI integration section with GitHub Actions example workflow
+- Created pre-promotion checklist covering auth, menu, cart, checkout, admin, and data integrity
+- Documented three levels of database reset (migrate reset, volume wipe, schema-only wipe)
+- Added troubleshooting section for common staging issues
+
+Stage Summary:
+- Complete staging environment documentation
+- Includes setup steps, test data management, CI integration
+- Covers Docker Compose orchestration, PostgreSQL migration, and seeding
+
+---
+Task ID: 11.1
+Agent: docker-builder
+Task: Create Docker and Docker Compose configuration for production deployment
+
+Work Log:
+- Read project context: package.json (scripts, dependencies), prisma/schema.prisma (SQLite), prisma/schema.postgresql.prisma (PostgreSQL), next.config.ts (standalone output), existing nginx/nginx.conf
+- Created Dockerfile with 3-stage build: deps (npm ci with caching), builder (prisma generate + next build + static asset copy), runner (node:20-alpine, non-root user, healthcheck, prisma migrate deploy on start)
+- Created docker-compose.yml with 3 services: postgres (16-alpine, healthcheck, volume), app (build from Dockerfile, depends on postgres, healthcheck), nginx (alpine, mounts existing nginx.conf)
+- Created docker-compose.staging.yml override with debug logging, NODE_ENV=staging, Node.js inspector port 9229, PostgreSQL query logging, staging env file, port 8080 for nginx
+- Created .dockerignore excluding node_modules, .env files, .next, docs, tests, skills, mini-services, db/, nginx/, scripts
+- Created .env.example with all required vars documented: DATABASE_URL (SQLite + PostgreSQL variants commented), JWT_SECRET, JWT_REFRESH_SECRET, LIQPAY_PUBLIC_KEY, LIQPAY_PRIVATE_KEY, NEXTAUTH_URL/SECRET (optional), TELEGRAM_BOT_TOKEN (optional), TELEGRAM_ALERT_BOT_TOKEN/CHAT_ID (optional), SENTRY_DSN (optional), LOG_LEVEL (optional), NODE_ENV
+
+Stage Summary:
+- Full Docker setup for production deployment with PostgreSQL
+- Staging variant with debug logging, inspector port, and query logging
+- Comprehensive .env.example template with all env vars documented
+- Dockerfile runs prisma migrate deploy before starting the app for zero-downtime schema updates
+---
+Task ID: 11.4
+Agent: deploy-docs-builder
+Task: Create production deployment documentation
+
+Work Log:
+- Created docs/DEPLOYMENT_PROD.md with full deployment guide
+
+Stage Summary:
+- Comprehensive production deployment guide
+- Covers Docker, Nginx, SSL, DNS, monitoring, security
+
+---
+Task ID: 14.1-14.3
+Agent: feature-flags-builder
+Task: Build BrandSettings API, feature flags, and settings UI
+
+Work Log:
+- Created src/lib/feature-flags.ts with getBrandSettings, isFeatureEnabled, and updateBrandSettings
+- Created src/app/api/admin/brand-settings/route.ts (GET/PUT) — GET returns settings + brand info, PUT handles partial updates
+- Created src/app/admin/brand-settings/page.tsx with 4-tab settings UI (General, Features, Checkout, Loyalty)
+- Fixed pre-existing lint error in uk.ts (unescaped apostrophe in enableDeliveryFeatures)
+
+Stage Summary:
+- Feature flag system with 17 configurable flags per brand
+- Admin settings page with 4 tabs: General, Features, Checkout, Loyalty
+- Auto-creation of default settings for new brands via upsert
+- General tab: read-only brand name, color pickers, currency fields
+- Features tab: grouped toggle switches (Ordering, Marketing, Social, Advanced)
+- Checkout tab: require phone/address, show tips, Apple Pay toggles
+- Loyalty tab: enable toggle + rate/min-spend/max-bonus inputs
+---
+Task ID: 12.1-12.4
+Agent: onboarding-builder
+Task: Build Onboarding Wizard, Demo Brand
+
+Work Log:
+- Created src/app/admin/onboarding/page.tsx with 4-step wizard (Brand → Branch → Menu → Launch)
+- Stepper component with icon-based progress indicator
+- Step 1: Brand form with name, slug, description, primary/secondary color pickers; detects existing brand
+- Step 2: Branch form with name, slug, address, phone, work schedule, prep time, auto-confirm/accepting toggles
+- Step 3: Menu setup with link to categories page + quick-add category+product form
+- Step 4: Launch screen with CheckCircle icon, "Go to Store" and "Go to Admin" buttons
+- Updated prisma/seed.ts with Demo Sushi brand (indigo #6366f1, UAH currency)
+- Demo Sushi includes: 1 branch, 2 categories (Роли, Напої), 5 products
+- Added admin@demo-sushi.ua user for the demo brand
+- Passed `bun run lint` with zero errors
+
+Stage Summary:
+- 4-step onboarding wizard at /admin/onboarding
+- Demo Sushi brand with test data for presentations
+- All i18n keys utilized from existing onboarding.* namespace
+---
+Task ID: 15.1-15.4
+Agent: legal-builder
+Task: Create legal pages, documents, and billing model
+
+Work Log:
+- Created src/app/api/admin/legal/route.ts (GET/PUT) — reads/writes markdown files from docs/legal/
+- Created src/app/admin/legal/page.tsx with tabbed legal document viewer/editor
+- Created docs/legal/privacy-policy.md (Ukrainian, 12 sections, ~100 lines)
+- Created docs/legal/terms-of-service.md (Ukrainian, 12 sections, ~100 lines)
+- Created docs/legal/restaurant-terms.md (Ukrainian, 12 sections, ~100 lines)
+- Created docs/BILLING.md with 3 pricing tiers (Starter/Pro/Enterprise), billing mechanics, overage, trial
+
+Stage Summary:
+- Legal admin page with 3 tabs (Privacy Policy, Terms of Service, Restaurant Terms)
+- View/Edit toggle per document with markdown textarea editor and save via API
+- 3 comprehensive legal documents in Ukrainian covering GDPR, payments, SLA
+- Billing model documentation with pricing tiers, overage charges, and payment methods
+---
+Task ID: 12.3
+Agent: brand-guide-builder
+Task: Create brand guide documentation
+
+Work Log:
+- Created docs/BRAND_GUIDE.md with 12 sections in Ukrainian
+
+Stage Summary:
+- Comprehensive brand guide for restaurant owners
+- Covers all admin features: menu, orders, analytics, campaigns, settings
+- Written in Ukrainian with practical step-by-step instructions
+---
+Task ID: 13.1-13.4
+Agent: mobile-docs-builder
+Task: Create mobile app documentation and API SDK
+
+Work Log:
+- Created docs/MOBILE_ARCHITECTURE.md with React Native/Expo white-label strategy
+- Created docs/MOBILE_API_SDK.md with complete API reference
+- Created docs/MOBILE_PUBLISHING.md with Google Play and App Store guides
+- Created docs/mobile-sdk-types.ts with TypeScript API types
+
+Stage Summary:
+- Complete mobile documentation: architecture, API SDK, publishing guides
+- TypeScript type definitions for mobile API client development

@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   BarChart3, Building2, Store, MapPin, UtensilsCrossed, ShoppingCart,
   Tag, Star, MessageCircleWarning, Megaphone, BarChartBig, Bike,
-  ChevronDown, ChevronRight,
+  ChevronDown, ChevronRight, Rocket, Settings, FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -35,6 +35,9 @@ export function AdminMobileSidebar() {
     { href: '/admin/campaigns', label: t('admin.sidebar.campaigns'), icon: Megaphone },
     { href: '/admin/analytics-advanced', label: t('admin.sidebar.advancedAnalytics'), icon: BarChartBig },
     { href: '/admin/couriers', label: t('admin.sidebar.couriers'), icon: Bike },
+    { href: '/admin/onboarding', label: t('admin.sidebar.onboarding'), icon: Rocket },
+    { href: '/admin/brand-settings', label: t('admin.sidebar.brandSettings'), icon: Settings },
+    { href: '/admin/legal', label: t('admin.sidebar.legal'), icon: FileText },
   ];
 
   return (

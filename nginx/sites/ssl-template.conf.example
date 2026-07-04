@@ -1,0 +1,165 @@
+# =============================================================================
+# SushiChain - SSL / HTTPS Configuration Template
+#
+# HOW TO USE:
+#   1. Copy this file:  cp ssl-template.conf.example sushichain-ssl.conf
+#   2. Replace the placeholder domain with your real domain
+#   3. Run certbot to obtain certificates:
+#
+#      docker compose run --rm certbot certonly \
+#        --webroot --webroot-path /var/www/certbot \
+#        -d sushichain.example.com \
+#        -d '*.sushichain.example.com'
+#
+#   4. Restart nginx:  docker compose restart nginx
+#
+# NOTE: Let's Encrypt wildcard certificates require DNS-01 challenge,
+#       not HTTP-01. Use certbot's DNS plugin (e.g. --dns-cloudflare)
+#       for wildcard certs, or issue separate certs per subdomain.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# HTTP -> HTTPS redirect
+# ---------------------------------------------------------------------------
+server {
+    listen 80;
+    server_name
+        sushichain.example.com
+        *.sushichain.example.com;
+
+    # Certbot ACME challenge path (needed for HTTP-01 challenge)
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # Redirect everything else to HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# ---------------------------------------------------------------------------
+# HTTPS server (port 443)
+# ---------------------------------------------------------------------------
+server {
+    listen 443 ssl http2;
+    server_name
+        sushichain.example.com
+        *.sushichain.example.com;
+
+    # -----------------------------------------------------------------------
+    # SSL certificates — managed by certbot / Let's Encrypt
+    # -----------------------------------------------------------------------
+    ssl_certificate     /etc/letsencrypt/live/sushichain.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/sushichain.example.com/privkey.pem;
+
+    # -----------------------------------------------------------------------
+    # SSL protocols and ciphers — Modern profile (Mozilla OpSec)
+    # Only TLS 1.2 and 1.3; strong cipher suites only
+    # -----------------------------------------------------------------------
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+
+    # -----------------------------------------------------------------------
+    # SSL session settings
+    # -----------------------------------------------------------------------
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:MozSSL:10m;
+    ssl_session_tickets off;
+
+    # -----------------------------------------------------------------------
+    # OCSP stapling — improves SSL handshake performance
+    # -----------------------------------------------------------------------
+    # ssl_stapling on;
+    # ssl_stapling_verify on;
+    # resolver 1.1.1.1 8.8.8.8 valid=300s;
+    # resolver_timeout 5s;
+
+    # -----------------------------------------------------------------------
+    # Security headers
+    # -----------------------------------------------------------------------
+    add_header X-Frame-Options        "SAMEORIGIN"  always;
+    add_header X-Content-Type-Options  "nosniff"     always;
+    add_header X-XSS-Protection        "1; mode=block" always;
+    add_header Referrer-Policy         "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+
+    # -----------------------------------------------------------------------
+    # Static assets — long cache (content-hashed by Next.js)
+    # -----------------------------------------------------------------------
+    location /_next/static/ {
+        proxy_pass http://nextjs;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        expires 365d;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    location /static/ {
+        proxy_pass http://nextjs;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        expires 30d;
+        add_header Cache-Control "public";
+        access_log off;
+    }
+
+    # -----------------------------------------------------------------------
+    # Service worker — no cache
+    # -----------------------------------------------------------------------
+    location = /sw.js {
+        proxy_pass http://nextjs;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        expires off;
+    }
+
+    # -----------------------------------------------------------------------
+    # WebSocket support for /socket.io/
+    # -----------------------------------------------------------------------
+    location /socket.io/ {
+        proxy_pass http://nextjs;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Brand-Slug      $brand_slug;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+
+    # -----------------------------------------------------------------------
+    # API endpoints — rate limited
+    # -----------------------------------------------------------------------
+    location /api/ {
+        limit_req zone=api_limit burst=20 nodelay;
+        proxy_pass http://nextjs;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Brand-Slug      $brand_slug;
+    }
+
+    # -----------------------------------------------------------------------
+    # All other requests — Next.js SSR / ISR
+    # -----------------------------------------------------------------------
+    location / {
+        proxy_pass http://nextjs;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Brand-Slug      $brand_slug;
+    }
+}

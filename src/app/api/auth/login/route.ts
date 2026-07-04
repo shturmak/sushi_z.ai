@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { apiSuccess, apiError } from '@/lib/api-response';
 import { generateAccessToken, generateRefreshToken, verifyPassword } from '@/lib/auth';
 import { authLimiter, rateLimitHeaders } from '@/lib/rate-limit';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,6 +29,7 @@ export async function POST(request: NextRequest) {
       : await db.user.findUnique({ where: { phone }, include: { loyaltyAccounts: { take: 1 } } });
 
     if (!user) {
+      logger.warn('Login failed: user not found', { identifier: email || phone });
       return apiError('INVALID_CREDENTIALS', 'Invalid email/phone or password', 401);
     }
 
@@ -36,6 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!verifyPassword(password, user.passwordHash)) {
+      logger.warn('Login failed: invalid password', { userId: user.id });
       return apiError('INVALID_CREDENTIALS', 'Invalid email/phone or password', 401);
     }
 
@@ -59,6 +62,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    logger.info('Login successful', { userId: user.id });
+
     return apiSuccess({
       user: {
         id: user.id,
@@ -77,7 +82,7 @@ export async function POST(request: NextRequest) {
     }, undefined, undefined, rateLimitHeaders(rl));
   } catch (error: unknown) {
     if (error && typeof error === 'object' && 'status' in error) return error as Response;
-    console.error('Login error:', error);
+    logger.error('Login error', undefined, error);
     return apiError('INTERNAL_ERROR', 'Login failed', 500);
   }
 }

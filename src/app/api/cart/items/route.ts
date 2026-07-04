@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       return apiError('VALIDATION_ERROR', 'productId and valid quantity are required');
     }
 
-    const cart = await db.cart.findUnique({ where: { userId: authUser.userId } });
+    const cart = await db.cart.findFirst({ where: { userId: authUser.userId } });
     if (!cart) {
       return apiError('NO_CART', 'Cart does not exist. Create a cart first.', 404);
     }

@@ -806,6 +806,126 @@ async function seed() {
 
   console.log('  ✅ Products created:', sushiProducts.length, '+', pizzaProducts.length, '+', burgerProducts.length);
 
+  // ─── DEMO SUSHI (4th brand) ────────────────────
+  const brandDemo = await prisma.brand.create({
+    data: {
+      name: 'Demo Sushi',
+      slug: 'demo-sushi',
+      primaryColor: '#6366f1',
+      secondaryColor: '#eef2ff',
+      accentColor: '#a5b4fc',
+      description: 'Demo brand for presentations and testing.',
+      isActive: true,
+      currency: 'UAH',
+      currencySymbol: '₴',
+    },
+  });
+
+  const adminDemo = await prisma.user.create({
+    data: {
+      email: 'admin@demo-sushi.ua',
+      passwordHash: 'hashed_-1861353340_8',
+      firstName: 'Демо',
+      lastName: 'Адмін',
+      role: 'admin',
+      brandId: brandDemo.id,
+      isActive: true,
+    },
+  });
+
+  const demoBranch = await prisma.branch.create({
+    data: {
+      brandId: brandDemo.id,
+      name: 'Demo Branch',
+      slug: 'demo-branch',
+      address: 'Демо-адреса, Київ',
+      phone: '+380441234567',
+      isOpen: true,
+      workSchedule: WORK_SCHEDULE,
+      sortOrder: 1,
+    },
+  });
+
+  const demoCats = await Promise.all([
+    prisma.category.create({
+      data: {
+        brandId: brandDemo.id,
+        branchId: demoBranch.id,
+        name: 'Роли',
+        slug: 'demo-rolls',
+        description: 'Демо роли',
+        sortOrder: 1,
+      },
+    }),
+    prisma.category.create({
+      data: {
+        brandId: brandDemo.id,
+        branchId: demoBranch.id,
+        name: 'Напої',
+        slug: 'demo-drinks',
+        description: 'Демо напої',
+        sortOrder: 2,
+      },
+    }),
+  ]);
+
+  await prisma.product.createMany({
+    data: [
+      {
+        brandId: brandDemo.id,
+        categoryId: demoCats[0].id,
+        branchId: demoBranch.id,
+        name: 'Філадельфія',
+        slug: 'demo-philadelphia',
+        description: 'Лосось, крем-сир, авокадо',
+        price: 189,
+        sortOrder: 1,
+      },
+      {
+        brandId: brandDemo.id,
+        categoryId: demoCats[0].id,
+        branchId: demoBranch.id,
+        name: 'Каліфорнія',
+        slug: 'demo-california',
+        description: 'Краб, авокадо, огірок',
+        price: 159,
+        sortOrder: 2,
+      },
+      {
+        brandId: brandDemo.id,
+        categoryId: demoCats[0].id,
+        branchId: demoBranch.id,
+        name: 'Дракон',
+        slug: 'demo-dragon',
+        description: 'Вугор, авокадо, огірок, унагі соус',
+        price: 219,
+        sortOrder: 3,
+      },
+      {
+        brandId: brandDemo.id,
+        categoryId: demoCats[1].id,
+        branchId: demoBranch.id,
+        name: 'Зелений чай',
+        slug: 'demo-green-tea',
+        description: 'Класичний зелений чай',
+        price: 45,
+        sortOrder: 1,
+      },
+      {
+        brandId: brandDemo.id,
+        categoryId: demoCats[1].id,
+        branchId: demoBranch.id,
+        name: 'Лимонад',
+        slug: 'demo-lemonade',
+        description: 'Свіжий лимонад',
+        price: 65,
+        sortOrder: 2,
+      },
+    ],
+  });
+
+  console.log('  ✅ Demo Sushi brand created with branch, categories, and products');
+
   // ─── PROMOTIONS ────────────────────────────────
   const sushiPromo1 = await prisma.promotion.create({
     data: {
@@ -1039,7 +1159,8 @@ async function seed() {
   console.log(`  Super Admin: ${superAdmin.email} / 12345678`);
   console.log(`  Brand Admins: ${adminSushi.email}, ${adminPizza.email}, ${adminBurger.email}`);
   console.log(`  Customer: ${customer.email} / 12345678`);
-  console.log(`  Brands: ${brandSushi.name} (${brandSushi.slug}), ${brandPizza.name} (${brandPizza.slug}), ${brandBurger.name} (${brandBurger.slug})`);
+  console.log(`  Brands: ${brandSushi.name} (${brandSushi.slug}), ${brandPizza.name} (${brandPizza.slug}), ${brandBurger.name} (${brandBurger.slug}), ${brandDemo.name} (${brandDemo.slug})`);
+  console.log(`  Demo Admin: ${adminDemo.email} / 12345678`);
 }
 
 seed()

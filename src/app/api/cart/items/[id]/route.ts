@@ -17,7 +17,7 @@ export async function PUT(
       return apiError('VALIDATION_ERROR', 'Valid quantity is required');
     }
 
-    const cart = await db.cart.findUnique({ where: { userId: authUser.userId } });
+    const cart = await db.cart.findFirst({ where: { userId: authUser.userId } });
     if (!cart) {
       return apiError('NO_CART', 'Cart does not exist', 404);
     }
@@ -73,7 +73,7 @@ export async function DELETE(
     const authUser = await requireAuth();
     const { id } = await params;
 
-    const cart = await db.cart.findUnique({ where: { userId: authUser.userId } });
+    const cart = await db.cart.findFirst({ where: { userId: authUser.userId } });
     if (!cart) {
       return apiError('NO_CART', 'Cart does not exist', 404);
     }

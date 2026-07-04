@@ -1,0 +1,63 @@
+# =============================================================================
+# SushiChain — Staging Docker Compose Override
+# =============================================================================
+# Usage:
+#   cp .env.example .env.staging   # then fill in staging values
+#   docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+#
+# This file extends the production compose with staging-specific settings:
+#   - Debug logging enabled
+#   - Exposes debug ports
+#   - Uses staging env file
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Next.js Application (Staging)
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sushichain-app-staging
+    env_file:
+      - .env.staging
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sushichain}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-sushichain_staging}?schema=public
+      NODE_ENV: staging
+      LOG_LEVEL: debug
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+    # Expose Node.js inspector for debugging
+    ports:
+      - "3000:3000"
+      - "9229:9229"
+    command: >
+      sh -c "npx prisma migrate deploy --schema=prisma/schema.postgresql.prisma && node --inspect=0.0.0.0:9229 server.js"
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL (Staging)
+  # ---------------------------------------------------------------------------
+  postgres:
+    container_name: sushichain-postgres-staging
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sushichain}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-sushichain_staging}
+    # Expose Postgres port for external tools (pgAdmin, DBeaver, etc.)
+    ports:
+      - "5432:5432"
+    command: >
+      postgres
+        -c log_statement=all
+        -c log_min_duration_statement=0
+        -c log_connections=yes
+        -c log_disconnections=yes
+
+  # ---------------------------------------------------------------------------
+  # Nginx (Staging)
+  # ---------------------------------------------------------------------------
+  nginx:
+    container_name: sushichain-nginx-staging
+    ports:
+      - "8080:80"

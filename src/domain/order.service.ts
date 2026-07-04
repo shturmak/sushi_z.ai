@@ -5,6 +5,7 @@
 
 import { db } from '@/lib/db';
 import { OrderStatus, PaymentMethod, OrderType } from '@prisma/client';
+import { logger } from '@/lib/logger';
 
 const VALID_TRANSITIONS: Record<string, OrderStatus[]> = {
   [OrderStatus.new]: [OrderStatus.confirmed, OrderStatus.cancelled],
@@ -43,7 +44,7 @@ export interface CreateOrderParams {
 
 export async function createOrderFromCart(params: CreateOrderParams) {
   // 1. Get cart
-  const cart = await db.cart.findUnique({
+  const cart = await db.cart.findFirst({
     where: { userId: params.userId },
     include: { items: { include: { product: true } }, branch: true },
   });
@@ -90,7 +91,7 @@ export async function createOrderFromCart(params: CreateOrderParams) {
   let promotionId: string | null = null;
 
   if (params.promotionCode) {
-    const promo = await db.promotion.findUnique({ where: { code: params.promotionCode } });
+    const promo = await db.promotion.findFirst({ where: { code: params.promotionCode } });
     if (!promo) return { success: false as const, error: { code: 'INVALID_PROMO', message: 'Promotion code not found' } };
     const now = new Date();
     if (promo.status !== 'active' || now < promo.startDate || now > promo.endDate)
@@ -126,7 +127,7 @@ export async function createOrderFromCart(params: CreateOrderParams) {
   const order = await db.$transaction(async (tx) => {
     const newOrder = await tx.order.create({
       data: {
-        orderNumber, userId: params.userId, branchId: params.branchId,
+        orderNumber, userId: params.userId, brandId: cart.brandId, branchId: params.branchId,
         type: params.type, status: OrderStatus.new,
         addressSnapshot, deliveryFee, subtotal, discount, total,
         note: params.note || null, promotionId: promotionId ?? undefined,
@@ -200,10 +201,10 @@ export async function createOrderFromCart(params: CreateOrderParams) {
         estimatedMinutes: estMinutes,
       },
     });
-    console.log(`[ORDER] Auto-confirmed ${orderNumber}, estimated: ${estMinutes}min`);
+    logger.info(`Auto-confirmed ${orderNumber}`, { orderId: order.id, estimatedMinutes: estMinutes });
   }
 
-  console.log(`[ORDER] Created ${orderNumber} for user ${params.userId}, total: ${total} UAH`);
+  logger.info(`Created ${orderNumber}`, { userId: params.userId, orderId: order.id, branchId: params.branchId, total });
   return {
     success: true as const,
     order: await db.order.findUnique({ where: { id: order.id }, include: { items: true, branch: true, payments: true } }),
@@ -221,7 +222,7 @@ export async function updateOrderStatus(orderId: string, newStatus: OrderStatus)
   if (timelineField) updateData[timelineField] = new Date();
 
   const updated = await db.order.update({ where: { id: orderId }, data: updateData });
-  console.log(`[ORDER] ${order.orderNumber}: ${order.status} → ${newStatus}`);
+  logger.info(`Status transition ${order.orderNumber}: ${order.status} → ${newStatus}`, { orderId, fromStatus: order.status, toStatus: newStatus });
   return { success: true as const, order: updated };
 }
 
@@ -245,7 +246,7 @@ export async function cancelOrder(orderId: string, userId: string) {
       });
     }
   }
-  console.log(`[ORDER] Cancelled ${order.orderNumber}`);
+  logger.info(`Cancelled ${order.orderNumber}`, { orderId, userId });
   return { success: true as const };
 }
 

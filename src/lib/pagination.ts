@@ -23,13 +23,15 @@ export interface PaginatedResult<T> {
 // ── Parse pagination params from URL ─────────────────────────────────
 
 export function parsePagination(searchParams: URLSearchParams, defaults = { limit: 25, maxLimit: 100 }): Required<PaginationParams> & { cursor?: string } {
+  const maxLimit = defaults.maxLimit ?? 100;
+  const defaultLimit = defaults.limit ?? 25;
   const rawPage = searchParams.get('page');
   const rawLimit = searchParams.get('limit');
   const cursor = searchParams.get('cursor') || undefined;
 
   const limit = Math.min(
-    Math.max(parseInt(rawLimit || String(defaults.limit), 10) || defaults.limit, 1),
-    defaults.maxLimit,
+    Math.max(parseInt(rawLimit || String(defaultLimit), 10) || defaultLimit, 1),
+    maxLimit,
   );
 
   const page = cursor ? 1 : Math.max(parseInt(rawPage || '1', 10) || 1, 1);
