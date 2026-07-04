@@ -38,7 +38,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const { id } = await params;
     const body = await request.json();
-    const { name, slug, logoUrl, primaryColor, secondaryColor, accentColor, description, slogan, isActive } = body;
+    const { name, slug, logoUrl, primaryColor, secondaryColor, accentColor, description, slogan, isActive, currency, currencySymbol } = body;
 
     // Check brand exists
     const existing = await db.brand.findUnique({ where: { id } });
@@ -62,6 +62,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         ...(description !== undefined && { description: description ?? null }),
         ...(slogan !== undefined && { slogan: slogan ?? null }),
         ...(isActive !== undefined && { isActive }),
+        ...(currency !== undefined && { currency }),
+        ...(currencySymbol !== undefined && { currencySymbol }),
       },
       include: {
         _count: {

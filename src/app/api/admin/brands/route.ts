@@ -66,6 +66,8 @@ export async function POST(request: NextRequest) {
       description,
       slogan,
       isActive,
+      currency,
+      currencySymbol,
     } = body;
 
     if (!name) return apiError('VALIDATION_ERROR', 'name is required');
@@ -87,6 +89,8 @@ export async function POST(request: NextRequest) {
         description: description ?? null,
         slogan: slogan ?? null,
         isActive: isActive ?? true,
+        currency: currency ?? 'UAH',
+        currencySymbol: currencySymbol ?? '₴',
       },
       include: {
         _count: {

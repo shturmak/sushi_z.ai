@@ -18,6 +18,8 @@ export interface BrandInfo {
   primaryColor: string;
   secondaryColor: string;
   logoUrl?: string | null;
+  currency?: string;
+  currencySymbol?: string;
 }
 
 // ── Brand store (storefront) ──────────────────────────────

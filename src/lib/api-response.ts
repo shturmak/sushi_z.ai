@@ -15,17 +15,17 @@ export type ApiErrorResponse = {
   };
 };
 
-export function apiSuccess<T>(data: T, message?: string, status = 200) {
+export function apiSuccess<T>(data: T, message?: string, status = 200, headers?: HeadersInit) {
   return NextResponse.json<ApiSuccessResponse<T>>(
     { success: true, data, ...(message ? { message } : {}) },
-    { status }
+    { status, headers }
   );
 }
 
-export function apiError(code: string, message: string, status = 400, details?: unknown) {
+export function apiError(code: string, message: string, status = 400, details?: unknown, headers?: HeadersInit) {
   return NextResponse.json<ApiErrorResponse>(
     { success: false, error: { code, message, ...(details ? { details } : {}) } },
-    { status }
+    { status, headers }
   );
 }
 

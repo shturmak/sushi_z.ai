@@ -12,6 +12,8 @@ import CheckoutView from '@/components/storefront/checkout-view'
 import OrdersView from '@/components/storefront/orders-view'
 import ProfileView from '@/components/storefront/profile-view'
 import { CustomerOrderNotifications } from '@/components/storefront/customer-order-notifications'
+import { PwaInstallPrompt } from '@/components/pwa/install-prompt'
+import { OfflineIndicator } from '@/components/pwa/offline-indicator'
 import { UtensilsCrossed, Loader2 } from 'lucide-react'
 
 type ViewType = 'menu' | 'checkout' | 'orders' | 'profile'
@@ -173,6 +175,10 @@ export default function StorefrontPage() {
       {isAuthenticated && activeOrderIds.length > 0 && (
         <CustomerOrderNotifications orderIds={activeOrderIds} />
       )}
+
+      {/* PWA components */}
+      <OfflineIndicator />
+      <PwaInstallPrompt />
 
       {/* Auth dialog */}
       <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />

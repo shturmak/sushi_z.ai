@@ -29,6 +29,8 @@ model Brand {
   description     String?
   slogan          String?
   isActive        Boolean  @default(true)
+  currency        String   @default("UAH")          // 9.3 — brand currency code
+  currencySymbol  String   @default("₴")            // 9.3 — display symbol
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -44,6 +46,8 @@ model Brand {
   favoriteProducts FavoriteProduct[]
   feedbacks       Feedback[]
   campaigns       Campaign[]
+  couriers        Courier[]
+  menuTranslations MenuTranslation[]
 
   @@map("brands")
 }
@@ -380,6 +384,7 @@ model Order {
   payments  Payment[]
   reviews   Review[]
   feedbacks Feedback[]
+  deliveryAssignment DeliveryAssignment?
 
   @@map("orders")
 }
@@ -640,4 +645,60 @@ model CampaignMessage {
   campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@map("campaign_messages")
+}
+
+// ──────────────────────────────────────────────
+//  9.1 — COURIERS & DELIVERY ASSIGNMENTS
+// ──────────────────────────────────────────────
+
+model Courier {
+  id          String   @id @default(cuid())
+  brandId     String
+  name        String
+  phone       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  brand           Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  deliveryAssignments DeliveryAssignment[]
+
+  @@map("couriers")
+}
+
+model DeliveryAssignment {
+  id           String   @id @default(cuid())
+  orderId      String   @unique
+  courierId    String
+  status       String   @default("assigned")  // assigned, picked_up, delivered
+  assignedAt   DateTime @default(now())
+  pickedUpAt   DateTime?
+  deliveredAt  DateTime?
+  createdAt    DateTime @default(now())
+
+  order        Order    @relation(fields: [orderId], references: [id])
+  courier      Courier  @relation(fields: [courierId], references: [id], onDelete: Cascade)
+
+  @@map("delivery_assignments")
+}
+
+// ──────────────────────────────────────────────
+//  9.3 — MENU TRANSLATIONS
+// ──────────────────────────────────────────────
+
+model MenuTranslation {
+  id          String   @id @default(cuid())
+  brandId     String
+  locale      String   // 'uk', 'ru', 'en'
+  entityType  String   // 'Product', 'Category'
+  entityId    String   // the ID of the Product or Category
+  name        String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  brand       Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, locale, entityType, entityId])
+  @@map("menu_translations")
 }

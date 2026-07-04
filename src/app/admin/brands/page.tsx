@@ -56,6 +56,8 @@ interface BrandFormData {
   description: string;
   slogan: string;
   logoUrl: string;
+  currency: string;
+  currencySymbol: string;
   isActive: boolean;
 }
 
@@ -106,6 +108,8 @@ const emptyForm: BrandFormData = {
   description: '',
   slogan: '',
   logoUrl: '',
+  currency: 'UAH',
+  currencySymbol: '₴',
   isActive: true,
 };
 
@@ -150,6 +154,8 @@ function BrandFormDialog({
         description: brand.description ?? '',
         slogan: brand.slogan ?? '',
         logoUrl: brand.logoUrl ?? '',
+        currency: (brand as Record<string, unknown>).currency as string ?? 'UAH',
+        currencySymbol: (brand as Record<string, unknown>).currencySymbol as string ?? '₴',
         isActive: brand.isActive,
       });
     } else {
@@ -198,6 +204,8 @@ function BrandFormDialog({
         description: form.description || null,
         slogan: form.slogan || null,
         logoUrl: form.logoUrl || null,
+        currency: form.currency || 'UAH',
+        currencySymbol: form.currencySymbol || '₴',
         isActive: form.isActive,
       };
 
@@ -339,6 +347,30 @@ function BrandFormDialog({
                 placeholder="https://example.com/logo.png"
                 value={form.logoUrl}
                 onChange={(e) => updateField('logoUrl', e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Currency + Currency Symbol */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="brand-currency">Currency code</Label>
+              <Input
+                id="brand-currency"
+                placeholder="UAH"
+                value={form.currency}
+                onChange={(e) => updateField('currency', e.target.value)}
+                className="max-w-[200px]"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="brand-currency-symbol">Currency symbol</Label>
+              <Input
+                id="brand-currency-symbol"
+                placeholder="₴"
+                value={form.currencySymbol}
+                onChange={(e) => updateField('currencySymbol', e.target.value)}
+                className="max-w-[200px]"
               />
             </div>
           </div>

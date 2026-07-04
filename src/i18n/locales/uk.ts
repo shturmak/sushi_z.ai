@@ -223,6 +223,7 @@ const uk = {
       feedback: 'Зворотний зв\'язок',
       campaigns: 'Кампанії',
       advancedAnalytics: 'Аналітика+',
+      couriers: 'Кур\'єри',
     },
 
     analytics: {
@@ -615,6 +616,58 @@ const uk = {
     dark: 'Темна',
     system: 'Системна',
     toggle: 'Змінити тему',
+  },
+
+  // ── 9.1 Couriers ──────────────────
+  courier: {
+    title: 'Кур\'єри',
+    create: 'Додати кур\'єра',
+    edit: 'Редагувати кур\'єра',
+    deleteConfirm: 'Видалити цього кур\'єра?',
+    name: 'Ім\'я',
+    phone: 'Телефон',
+    isActive: 'Активний',
+    activeOrders: 'Активних доставок',
+    totalDeliveries: 'Всього доставок',
+    assignOrder: 'Призначити заказ',
+    unassignOrder: 'Зняти призначення',
+    assigned: 'Призначено',
+    pickedUp: 'Забрано',
+    delivered: 'Доставлено',
+    noCouriers: 'Немає кур\'єрів',
+    orderAssign: 'Призначити кур\'єра на заказ #{number}',
+    selectCourier: 'Оберіть кур\'єра',
+  },
+
+  // ── 9.3 Translations ──────────────────
+  translation: {
+    title: 'Переклади меню',
+    locale: 'Мова',
+    entity: 'Об\'єкт',
+    type: 'Тип',
+    product: 'Продукт',
+    category: 'Категорія',
+    originalName: 'Оригінальна назва',
+    translatedName: 'Перекладена назва',
+    translatedDesc: 'Перекладений опис',
+    save: 'Зберегти переклад',
+    saved: 'Переклад збережено',
+    noTranslations: 'Немає перекладів',
+  },
+
+  // ── 9.4 PWA ──────────────────
+  pwa: {
+    installApp: 'Встановити додаток',
+    installPrompt: 'Встановіть SushiChain на пристрій для швидкого доступу',
+    installButton: 'Встановити',
+    dismiss: 'Не зараз',
+    installed: 'Додаток встановлено',
+    shortcuts: 'Швидкі дії',
+  },
+
+  // ── 9.2 Rate Limiting ──────────────────
+  rateLimit: {
+    tooManyRequests: 'Забагато запитів. Спробуйте пізніше.',
   },
 } as const
 

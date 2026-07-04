@@ -2,12 +2,19 @@ import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { apiSuccess, apiError } from '@/lib/api-response';
 import { getAuthUser } from '@/lib/auth-middleware';
+import { apiLimiter, rateLimitHeaders } from '@/lib/rate-limit';
 
 const VALID_TYPES = ['order_issue', 'general', 'suggestion', 'complaint'];
 
 // POST /api/feedback — create a new feedback entry
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const rl = apiLimiter('feedback:' + ip);
+    if (!rl.success) {
+      return apiError('RATE_LIMITED', 'Too many requests', 429, undefined, rateLimitHeaders(rl));
+    }
+
     // Optionally authenticate user
     const authUser = await getAuthUser();
 
@@ -47,7 +54,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return apiSuccess(feedback, 'Feedback submitted successfully', 201);
+    return apiSuccess(feedback, 'Feedback submitted successfully', 201, rateLimitHeaders(rl));
   } catch (error: unknown) {
     if (error && typeof error === 'object' && 'status' in error) return error as Response;
     console.error('Create feedback error:', error);

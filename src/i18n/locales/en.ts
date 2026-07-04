@@ -223,6 +223,7 @@ const en: Messages = {
       feedback: 'Feedback',
       campaigns: 'Campaigns',
       advancedAnalytics: 'Analytics+',
+      couriers: 'Couriers',
     },
 
     analytics: {
@@ -615,6 +616,58 @@ const en: Messages = {
     dark: 'Dark',
     system: 'System',
     toggle: 'Toggle theme',
+  },
+
+  // ── 9.1 Couriers ──────────────────
+  courier: {
+    title: 'Couriers',
+    create: 'Add courier',
+    edit: 'Edit courier',
+    deleteConfirm: 'Delete this courier?',
+    name: 'Name',
+    phone: 'Phone',
+    isActive: 'Active',
+    activeOrders: 'Active deliveries',
+    totalDeliveries: 'Total deliveries',
+    assignOrder: 'Assign order',
+    unassignOrder: 'Unassign',
+    assigned: 'Assigned',
+    pickedUp: 'Picked up',
+    delivered: 'Delivered',
+    noCouriers: 'No couriers',
+    orderAssign: 'Assign courier to order #{number}',
+    selectCourier: 'Select courier',
+  },
+
+  // ── 9.3 Translations ──────────────────
+  translation: {
+    title: 'Menu Translations',
+    locale: 'Language',
+    entity: 'Entity',
+    type: 'Type',
+    product: 'Product',
+    category: 'Category',
+    originalName: 'Original name',
+    translatedName: 'Translated name',
+    translatedDesc: 'Translated description',
+    save: 'Save translation',
+    saved: 'Translation saved',
+    noTranslations: 'No translations',
+  },
+
+  // ── 9.4 PWA ──────────────────
+  pwa: {
+    installApp: 'Install App',
+    installPrompt: 'Install SushiChain on your device for quick access',
+    installButton: 'Install',
+    dismiss: 'Not now',
+    installed: 'App installed',
+    shortcuts: 'Quick actions',
+  },
+
+  // ── 9.2 Rate Limiting ──────────────────
+  rateLimit: {
+    tooManyRequests: 'Too many requests. Please try again later.',
   },
 }
 

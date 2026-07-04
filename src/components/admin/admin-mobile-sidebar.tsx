@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   BarChart3, Building2, Store, MapPin, UtensilsCrossed, ShoppingCart,
-  Tag, Star, MessageCircleWarning, Megaphone, BarChartBig,
+  Tag, Star, MessageCircleWarning, Megaphone, BarChartBig, Bike,
   ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -34,6 +34,7 @@ export function AdminMobileSidebar() {
     { href: '/admin/feedback', label: t('admin.sidebar.feedback'), icon: MessageCircleWarning },
     { href: '/admin/campaigns', label: t('admin.sidebar.campaigns'), icon: Megaphone },
     { href: '/admin/analytics-advanced', label: t('admin.sidebar.advancedAnalytics'), icon: BarChartBig },
+    { href: '/admin/couriers', label: t('admin.sidebar.couriers'), icon: Bike },
   ];
 
   return (

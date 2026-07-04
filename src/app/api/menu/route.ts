@@ -1,9 +1,16 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { apiSuccess, apiError } from '@/lib/api-response';
+import { publicLimiter, rateLimitHeaders } from '@/lib/rate-limit';
 
 export async function GET(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const rl = publicLimiter('menu:' + ip);
+    if (!rl.success) {
+      return apiError('RATE_LIMITED', 'Too many requests', 429, undefined, rateLimitHeaders(rl));
+    }
+
     const { searchParams } = new URL(request.url);
     const branchId = searchParams.get('branchId');
 
@@ -47,7 +54,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return apiSuccess(categories);
+    return apiSuccess(categories, undefined, undefined, rateLimitHeaders(rl));
   } catch (error) {
     console.error('Get menu error:', error);
     return apiError('INTERNAL_ERROR', 'Failed to load menu', 500);

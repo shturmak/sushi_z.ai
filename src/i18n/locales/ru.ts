@@ -223,6 +223,7 @@ const ru: Messages = {
       feedback: 'Обратная связь',
       campaigns: 'Кампании',
       advancedAnalytics: 'Аналитика+',
+      couriers: 'Курьеры',
     },
 
     analytics: {
@@ -615,6 +616,58 @@ const ru: Messages = {
     dark: 'Тёмная',
     system: 'Системная',
     toggle: 'Сменить тему',
+  },
+
+  // ── 9.1 Couriers ──────────────────
+  courier: {
+    title: 'Курьеры',
+    create: 'Добавить курьера',
+    edit: 'Редактировать курьера',
+    deleteConfirm: 'Удалить этого курьера?',
+    name: 'Имя',
+    phone: 'Телефон',
+    isActive: 'Активен',
+    activeOrders: 'Активных доставок',
+    totalDeliveries: 'Всего доставок',
+    assignOrder: 'Назначить заказ',
+    unassignOrder: 'Снять назначение',
+    assigned: 'Назначен',
+    pickedUp: 'Забран',
+    delivered: 'Доставлен',
+    noCouriers: 'Нет курьеров',
+    orderAssign: 'Назначить курьера на заказ #{number}',
+    selectCourier: 'Выберите курьера',
+  },
+
+  // ── 9.3 Translations ──────────────────
+  translation: {
+    title: 'Переводы меню',
+    locale: 'Язык',
+    entity: 'Объект',
+    type: 'Тип',
+    product: 'Продукт',
+    category: 'Категория',
+    originalName: 'Оригинальное название',
+    translatedName: 'Переведённое название',
+    translatedDesc: 'Переведённое описание',
+    save: 'Сохранить перевод',
+    saved: 'Перевод сохранён',
+    noTranslations: 'Нет переводов',
+  },
+
+  // ── 9.4 PWA ──────────────────
+  pwa: {
+    installApp: 'Установить приложение',
+    installPrompt: 'Установите SushiChain на устройство для быстрого доступа',
+    installButton: 'Установить',
+    dismiss: 'Не сейчас',
+    installed: 'Приложение установлено',
+    shortcuts: 'Быстрые действия',
+  },
+
+  // ── 9.2 Rate Limiting ──────────────────
+  rateLimit: {
+    tooManyRequests: 'Слишком много запросов. Попробуйте позже.',
   },
 }
 

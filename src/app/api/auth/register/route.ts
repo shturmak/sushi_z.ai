@@ -2,9 +2,16 @@ import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { apiSuccess, apiError } from '@/lib/api-response';
 import { generateAccessToken, generateRefreshToken, hashPassword } from '@/lib/auth';
+import { authLimiter, rateLimitHeaders } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const rl = authLimiter('register:' + ip);
+    if (!rl.success) {
+      return apiError('RATE_LIMITED', 'Too many requests', 429, undefined, rateLimitHeaders(rl));
+    }
+
     const body = await request.json();
     const { phone, email, password, firstName, lastName, brandId } = body;
 
@@ -87,7 +94,8 @@ export async function POST(request: NextRequest) {
         refreshToken,
       },
       'Registration successful',
-      201
+      201,
+      rateLimitHeaders(rl)
     );
   } catch (error: unknown) {
     if (error && typeof error === 'object' && 'status' in error) return error as Response;

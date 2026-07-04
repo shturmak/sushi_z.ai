@@ -963,3 +963,88 @@ Stage Summary:
 - All files pass `bun run lint` cleanly
 - i18n keys used: `recommendations.title`, `recommendations.orderedBefore`, `recommendations.popular`, `scheduled.deliveryTime`, `scheduled.asap`, `scheduled.today`, `scheduled.tomorrow`, `scheduled.selectTime`, `scheduled.scheduledOrder`, `scheduled.noSlots`
 - No i18n locale files or Prisma schema files were modified
+
+---
+Task ID: 9.2
+Agent: rate-limiting-builder
+Task: Implement Rate Limiting for API endpoints
+
+Work Log:
+- Created `src/lib/rate-limit.ts` with in-memory sliding-window rate limiter (Map-based store, 60s cleanup interval)
+- Exported `rateLimit()` core function, `authLimiter` (10 req/min), `apiLimiter` (120 req/min), `publicLimiter` (60 req/min)
+- Exported `rateLimitHeaders()` helper producing `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and conditional `Retry-After` headers
+- Updated `src/lib/api-response.ts` — added optional `headers` parameter to `apiSuccess()` and `apiError()`
+- Applied `authLimiter` to POST `/api/auth/login` and POST `/api/auth/register` (keyed by IP)
+- Applied `publicLimiter` to GET `/api/menu` and GET `/api/branches` (keyed by IP)
+- Applied `apiLimiter` to POST `/api/feedback` (keyed by IP)
+- All 429 responses include `Retry-After` and `X-RateLimit-Remaining` headers; successful responses include `X-RateLimit-Remaining` and `X-RateLimit-Reset`
+- `bun run lint` passes cleanly
+
+Stage Summary:
+- In-memory rate limiting deployed across 5 API endpoints
+- Auth endpoints: 10 req/min per IP; Public endpoints: 60 req/min per IP; Feedback POST: 120 req/min per IP
+- Standard rate limit headers on all responses for client-side awareness
+- No i18n locale files, Prisma schema, admin-types.ts, or UI files were modified
+---
+Task ID: 9.4
+Agent: pwa-enhancement
+Task: PWA Enhancement — install prompt, offline indicator, manifest shortcuts
+
+Work Log:
+- Created `src/components/pwa/install-prompt.tsx` — PWA install prompt component that listens for `beforeinstallprompt` event, shows a card with install button, supports dismiss
+- Created `src/components/pwa/offline-indicator.tsx` — Fixed-position amber banner shown when `navigator.onLine` is false, subscribes to online/offline events
+- Enhanced `public/manifest.json` — added `categories` (food, shopping) and `shortcuts` array for Menu and Orders quick actions
+- Integrated both PWA components into `src/app/page.tsx` alongside the existing CustomerOrderNotifications
+- Fixed lint error: replaced synchronous `setState` in useEffect with lazy initializer for `useState`
+
+Stage Summary:
+- PWA install prompt shows when browser supports installation
+- Offline indicator banner appears when network is unavailable
+- Manifest enriched with shortcuts for quick access to Menu and Orders
+- Lint passes cleanly, dev server compiles successfully
+
+---
+Task ID: 9.3
+Agent: multi-currency-translations
+Task: Multi-currency display in Brand settings + Menu Translations API + Admin Translations page
+
+Work Log:
+- Added `currency?: string` and `currencySymbol?: string` fields to `BrandInfo` interface in `src/lib/store.ts`
+- Added currency code and currency symbol input fields to brand create/edit dialog in `src/app/admin/brands/page.tsx` (defaults: "UAH", "₴")
+- Updated brand BrandFormData, emptyForm defaults, resetForm, and submit payload to include currency/currencySymbol
+- Updated `src/app/api/admin/brands/route.ts` POST handler to accept and persist currency/currencySymbol
+- Updated `src/app/api/admin/brands/[id]/route.ts` PUT handler to accept and update currency/currencySymbol
+- Created `src/app/api/admin/translations/route.ts` — GET (list with filters + batch original name lookup), POST (upsert with unique constraint)
+- Created `src/app/api/admin/translations/[id]/route.ts` — GET (single with original name), PUT (update name/description), DELETE
+- Created `src/app/admin/translations/page.tsx` — full admin page with locale/entity type filter selects, translations table (original name, translated name, locale badge, type badge, actions), create/edit dialog with entity selector, read-only original name, translated name input, translated description textarea, delete confirmation
+
+Stage Summary:
+- Currency code and symbol configurable per brand via admin UI and API
+- Menu Translations CRUD fully operational (list, create/upsert, read, update, delete)
+- Admin translations page with filters, table, and create/edit/delete dialogs
+- Lint passes cleanly, dev server compiles successfully
+
+---
+Task ID: 9.1
+Agent: courier-module-builder
+Task: Build Courier Module — API routes + Admin page
+
+Work Log:
+- Created `src/app/api/admin/couriers/route.ts` — GET (list couriers for brand with activeOrders/totalDeliveries counts), POST (create courier with name/phone/brandId)
+- Created `src/app/api/admin/couriers/[id]/route.ts` — GET (single courier with deliveryAssignments including order orderNumber/status), PUT (update name/phone/isActive), DELETE (only if no active assignments)
+- Created `src/app/api/admin/couriers/assign/route.ts` — POST (create/reassign DeliveryAssignment for orderId+courierId), DELETE (remove assignment by orderId)
+- Created `src/app/api/admin/couriers/[id]/deliveries/route.ts` — PATCH (update assignment status to picked_up/delivered with timestamp management)
+- Created `src/app/admin/couriers/page.tsx` — full admin page with:
+  - Courier List section: table (desktop) + card view (mobile) with name, phone, active orders count, total deliveries, isActive toggle (Switch), edit/delete buttons
+  - Active Deliveries Panel: expandable per-courier inline deliveries with status badges and action buttons (pick up / mark delivered / unassign)
+  - Create/Edit dialog for courier name + phone
+  - Assign Courier dialog with order ID input and courier Select dropdown
+  - Search filter, ConfirmDialog for delete, responsive design (md:hidden cards, hidden md:block table)
+  - All text uses `courier.*` i18n keys
+
+Stage Summary:
+- 4 API endpoints for courier CRUD, assignment, and delivery status management
+- Admin couriers page with two-section layout (courier list + active deliveries panel)
+- Mobile-responsive with card/table toggle pattern matching other admin pages
+- `bun run lint` passes cleanly
+- No i18n locale files, Prisma schema, or admin-types.ts were modified
