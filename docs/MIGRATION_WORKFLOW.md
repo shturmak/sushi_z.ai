@@ -627,4 +627,13 @@ prisma/migrations/
 │   └── migration.sql
 └── 20260704150000_add_expedited_status/
     └── migration.sql
-```
+```---
+
+## 13. Пов'язані документи
+
+| Документ | Опис |
+|---|---|
+| [docs/FIRST_MIGRATION_STRATEGY.md](./FIRST_MIGRATION_STRATEGY.md) | Детальна стратегія першої міграції: init vs baseline, список таблиць/enums/індексів, ризики |
+| [docs/PRE_MIGRATION_CHECKLIST.md](./PRE_MIGRATION_CHECKLIST.md) | Чек-лист (50+ пунктів) для перевірки готовності до першої міграції |
+| [docs/ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md) | Повний довідник змінних оточення з прикладами для кожного середовища |
+| [docs/STAGING_SETUP.md](./STAGING_SETUP.md) | Налаштування staging-середовища з PostgreSQL |

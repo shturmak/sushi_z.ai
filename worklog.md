@@ -1368,3 +1368,23 @@ Stage Summary:
 - Dev schema: prisma/schema.sqlite.prisma (SQLite, dev-only convenience)
 - Project is ready for first migration but migration NOT executed
 - First migration command: docker compose -f docker-compose.dev.yml up -d && bun run db:migrate --name init
+---
+Task ID: pg-migration-prep
+Agent: main
+Task: Подготовка проекта к первой безопасной миграции на PostgreSQL (9 шагов, без выполнения миграции)
+
+Work Log:
+- Проанализировал текущее состояние: предыдущий коммит уже выполнил шаги 1-5 и 8
+- Сравнил schema.prisma (PG) и schema.sqlite.prisma (SQLite), выявил расхождения
+- Исправил: добавил @@unique([brandId, code]) в schema.sqlite.prisma на Promotion
+- Задокументировал 34 отсутствующих @@index в SQLite (допустимо для dev)
+- Задокументировал разницу типов: Json? в PG vs String? в SQLite для JSON-полей
+- Создал docs/FIRST_MIGRATION_STRATEGY.md (549 строк) — полная стратегия init-миграции
+- Создал docs/PRE_MIGRATION_CHECKLIST.md (177 строк) — 50+ пунктов чек-листа
+- Обновил docs/MIGRATION_WORKFLOW.md — добавил раздел 13 "Пов'язані документи"
+
+Stage Summary:
+- Каноническая PG-схема: 27 таблиц, 11 enums, 45 indexes, 14 unique constraints
+- Ключевое исправление: Promotion @@unique([brandId, code]) добавлено в SQLite
+- Новые артефакты: FIRST_MIGRATION_STRATEGY.md, PRE_MIGRATION_CHECKLIST.md
+- Миграция НЕ выполнялась — только подготовка

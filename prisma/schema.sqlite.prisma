@@ -489,6 +489,7 @@ model Promotion {
   brand  Brand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
   orders Order[]
 
+  @@unique([brandId, code])
   @@map("promotions")
 }
 
