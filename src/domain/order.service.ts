@@ -38,6 +38,7 @@ export interface CreateOrderParams {
   note?: string;
   promotionCode?: string;
   useBonus?: number;
+  scheduledAt?: string;
 }
 
 export async function createOrderFromCart(params: CreateOrderParams) {
@@ -130,6 +131,7 @@ export async function createOrderFromCart(params: CreateOrderParams) {
         addressSnapshot, deliveryFee, subtotal, discount, total,
         note: params.note || null, promotionId: promotionId ?? undefined,
         promotionCode: params.promotionCode || null, bonusUsed, estimatedMinutes,
+        scheduledAt: params.scheduledAt ? new Date(params.scheduledAt) : undefined,
       },
     });
 

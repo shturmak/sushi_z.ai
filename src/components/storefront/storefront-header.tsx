@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useAuth, useBrand } from '@/lib/store'
 import { useT } from '@/i18n'
+import { useTheme } from 'next-themes'
 import LanguageSwitcher from '@/i18n/LanguageSwitcher'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +13,8 @@ import {
   LogOut,
   ClipboardList,
   ChevronDown,
+  Moon,
+  Sun,
 } from 'lucide-react'
 
 interface StorefrontHeaderProps {
@@ -26,6 +29,7 @@ export default function StorefrontHeader({
   onNavigate,
 }: StorefrontHeaderProps) {
   const t = useT()
+  const { theme, setTheme } = useTheme()
   const brand = useBrand((s) => s.brand)
   const { isAuthenticated, user, logout } = useAuth()
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -123,6 +127,18 @@ export default function StorefrontHeader({
               <span className="hidden sm:inline">{t('header.login')}</span>
             </Button>
           )}
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative h-9 w-9"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            aria-label={t('theme.toggle')}
+          >
+            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <span className="sr-only">{t('theme.toggle')}</span>
+          </Button>
 
           <LanguageSwitcher />
 

@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { Pencil, Trash2, Plus, X, Search, Upload, PackageCheck, PackageX } from 'lucide-react';
@@ -429,8 +430,43 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="rounded-md border">
+      {/* Mobile card view */}
+      <div className="md:hidden space-y-3">
+        {filteredProducts.length === 0 ? (
+          <div className="text-center text-muted-foreground py-8">{t('common.noData')}</div>
+        ) : (
+          filteredProducts.map(prod => (
+            <Card key={prod.id} className="p-4 gap-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="font-medium">{prod.name}</div>
+                  <div className="text-sm text-muted-foreground">{prod.category.name}</div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(prod)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteTarget(prod)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-semibold">{prod.price} ₴</span>
+                <div className="flex items-center gap-2">
+                  {prod.weight && <span className="text-muted-foreground">{prod.weight}</span>}
+                  <Badge variant={prod.isAvailable ? 'secondary' : 'outline'}>
+                    {prod.isAvailable ? t('admin.products.available') : t('admin.products.outOfStock')}
+                  </Badge>
+                </div>
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* Table — desktop only */}
+      <div className="hidden md:block rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>

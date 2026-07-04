@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/admin/page-header';
 import { TableSkeleton } from '@/components/admin/admin-skeletons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -214,11 +215,63 @@ export default function FeedbackPage() {
         </Select>
       </div>
 
-      {/* Table */}
+      {/* Mobile card view */}
+      {!loading && (
+        <div className="md:hidden space-y-3">
+          {feedbacks.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">{t('admin.feedback.noFeedback')}</div>
+          ) : (
+            feedbacks.map((fb) => (
+              <Card
+                key={fb.id}
+                className="p-4 gap-3 cursor-pointer"
+                onClick={() => openDetail(fb)}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{fb.subject || '—'}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {fb.user
+                        ? `${fb.user.firstName} ${fb.user.lastName}`
+                        : t('admin.feedback.guest')}
+                    </div>
+                  </div>
+                  <StatusBadge status={fb.status} />
+                </div>
+                <div className="text-sm text-muted-foreground line-clamp-2">
+                  {truncate(fb.message)}
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t">
+                  <div className="flex items-center gap-2">
+                    <TypeBadge type={fb.type} />
+                    <span className="text-xs text-muted-foreground">
+                      {format(new Date(fb.createdAt), 'dd.MM.yy HH:mm')}
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openDetail(fb);
+                    }}
+                    title={t('common.view')}
+                  >
+                    <Eye className="size-4" />
+                  </Button>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Table — desktop only */}
       {loading ? (
         <TableSkeleton rows={6} cols={6} />
       ) : (
-        <div className="rounded-md border overflow-x-auto">
+        <div className="hidden md:block rounded-md border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>

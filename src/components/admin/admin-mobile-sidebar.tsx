@@ -3,30 +3,38 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  BarChart3, Store, UtensilsCrossed, ShoppingCart, Tag, Star,
+  BarChart3, Building2, Store, MapPin, UtensilsCrossed, ShoppingCart,
+  Tag, Star, MessageCircleWarning, Megaphone, BarChartBig,
   ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
-
-const navItems = [
-  { href: '/admin', label: 'Аналітика', icon: BarChart3 },
-  { href: '/admin/branches', label: 'Філіали', icon: Store },
-  {
-    label: 'Меню', icon: UtensilsCrossed,
-    children: [
-      { href: '/admin/menu/categories', label: 'Категорії' },
-      { href: '/admin/menu/products', label: 'Блюда' },
-    ],
-  },
-  { href: '/admin/orders', label: 'Закази', icon: ShoppingCart },
-  { href: '/admin/promotions', label: 'Акції / Промокоди', icon: Tag },
-  { href: '/admin/reviews', label: 'Відгуки', icon: Star },
-];
+import { useT } from '@/i18n';
 
 export function AdminMobileSidebar() {
+  const t = useT();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(pathname.startsWith('/admin/menu'));
+
+  const navItems = [
+    { href: '/admin', label: t('admin.sidebar.analytics'), icon: BarChart3 },
+    { href: '/admin/brands', label: t('admin.sidebar.brands'), icon: Building2 },
+    { href: '/admin/branches', label: t('admin.sidebar.branches'), icon: Store },
+    { href: '/admin/delivery-zones', label: t('admin.sidebar.deliveryZones'), icon: MapPin },
+    {
+      label: t('admin.sidebar.menu'), icon: UtensilsCrossed,
+      children: [
+        { href: '/admin/menu/categories', label: t('admin.sidebar.categories') },
+        { href: '/admin/menu/products', label: t('admin.sidebar.products') },
+      ],
+    },
+    { href: '/admin/orders', label: t('admin.sidebar.orders'), icon: ShoppingCart },
+    { href: '/admin/promotions', label: t('admin.sidebar.promotions'), icon: Tag },
+    { href: '/admin/reviews', label: t('admin.sidebar.reviews'), icon: Star },
+    { href: '/admin/feedback', label: t('admin.sidebar.feedback'), icon: MessageCircleWarning },
+    { href: '/admin/campaigns', label: t('admin.sidebar.campaigns'), icon: Megaphone },
+    { href: '/admin/analytics-advanced', label: t('admin.sidebar.advancedAnalytics'), icon: BarChartBig },
+  ];
 
   return (
     <div className="flex flex-col h-full bg-card">
@@ -40,7 +48,7 @@ export function AdminMobileSidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           if ('children' in item && item.children) {
             const isActive = pathname.startsWith('/admin/menu');
@@ -99,6 +107,10 @@ export function AdminMobileSidebar() {
           );
         })}
       </nav>
+
+      <div className="px-4 py-3 border-t border-border text-xs text-muted-foreground">
+        v1.0.0 · SushiChain Admin
+      </div>
     </div>
   );
 }

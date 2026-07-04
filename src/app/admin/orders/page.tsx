@@ -13,6 +13,7 @@ import { TableSkeleton } from '@/components/admin/admin-skeletons';
 import { useAdminAuth } from '@/lib/admin-auth';
 import { useBrandStore } from '@/lib/brand-store';
 
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -251,11 +252,40 @@ export default function OrdersPage() {
         </Button>
       </div>
 
-      {/* Table */}
+      {/* Mobile card view */}
+      {!loading && (
+        <div className="md:hidden space-y-3">
+          {filteredOrders.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">{t('admin.ordersAdmin.noOrders')}</div>
+          ) : (
+            filteredOrders.map((order) => (
+              <Card key={order.id} className="p-4 gap-3" onClick={() => setSelectedOrder(order)}>
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">#{order.orderNumber}</span>
+                  <OrderStatusBadge status={order.status} />
+                </div>
+                <div className="text-sm text-muted-foreground space-y-0.5">
+                  <div>{order.user.firstName} {order.user.lastName}</div>
+                  <div>{order.branch.name} · {order.total} ₴</div>
+                  <div className="text-xs">{format(new Date(order.createdAt), 'dd.MM.yy HH:mm')}</div>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t">
+                  <PaymentMethodBadge method={order.payments[0]?.method || 'cash'} />
+                  <span className="text-xs text-muted-foreground">
+                    {order.type === 'delivery' ? t('checkout.delivery') : t('checkout.pickup')}
+                  </span>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Table — desktop only */}
       {loading ? (
         <TableSkeleton rows={8} cols={8} />
       ) : (
-        <div className="rounded-md border overflow-x-auto">
+        <div className="hidden md:block rounded-md border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>

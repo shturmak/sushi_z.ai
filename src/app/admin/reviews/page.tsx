@@ -12,6 +12,7 @@ import { TableSkeleton } from '@/components/admin/admin-skeletons';
 import { StarRatingText } from '@/components/ui/star-rating';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -188,11 +189,103 @@ export default function ReviewsPage() {
         </Select>
       </div>
 
-      {/* Table */}
+      {/* Mobile card view */}
+      {!loading && (
+        <div className="md:hidden space-y-3">
+          {filteredReviews.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">{t('admin.reviews.noReviews')}</div>
+          ) : (
+            filteredReviews.map((review) => (
+              <Card key={review.id} className="p-4 gap-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="font-medium">
+                      {review.user.firstName} {review.user.lastName}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {review.product?.name || '—'}
+                    </div>
+                  </div>
+                  <StarRatingText rating={review.rating} />
+                </div>
+                {review.comment && (
+                  <div className="text-sm text-muted-foreground line-clamp-2">
+                    {review.comment}
+                  </div>
+                )}
+                <div className="flex items-center justify-between pt-1 border-t">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {format(new Date(review.createdAt), 'dd.MM.yy HH:mm')}
+                    </span>
+                    {review.isApproved ? (
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+                        {t('admin.reviews.approved')}
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300">
+                        {t('admin.reviews.pending')}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-0.5">
+                    {!review.isApproved && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                        onClick={() => handleApprove(review.id)}
+                        title={t('admin.reviews.approve')}
+                      >
+                        <Check className="size-4" />
+                      </Button>
+                    )}
+                    {review.isApproved && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => handleReject(review.id)}
+                        title={t('admin.reviews.reject')}
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8"
+                      onClick={() => {
+                        setReplyTarget(review);
+                        setReplyText(review.isAdminReply || '');
+                      }}
+                      title={t('admin.reviews.reply')}
+                    >
+                      <MessageSquare className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 text-destructive hover:text-destructive"
+                      onClick={() => handleDelete(review.id)}
+                      disabled={deletingId === review.id}
+                      title={t('common.delete')}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Table — desktop only */}
       {loading ? (
         <TableSkeleton rows={6} cols={7} />
       ) : (
-        <div className="rounded-md border overflow-x-auto">
+        <div className="hidden md:block rounded-md border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>

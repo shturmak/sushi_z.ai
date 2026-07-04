@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
   try {
     const authUser = await requireAuth();
     const body = await request.json();
-    const { branchId, type, addressId, paymentMethod, note, promotionCode, useBonus } = body;
+    const { branchId, type, addressId, paymentMethod, note, promotionCode, useBonus, scheduledAt } = body;
 
     if (!branchId || !type || !paymentMethod) {
       return apiError('VALIDATION_ERROR', 'branchId, type, and paymentMethod are required');
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     const result = await createOrderFromCart({
       userId: authUser.userId,
-      branchId, type, addressId, paymentMethod, note, promotionCode, useBonus,
+      branchId, type, addressId, paymentMethod, note, promotionCode, useBonus, scheduledAt,
     });
 
     if (!result.success && result.error) {

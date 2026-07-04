@@ -140,6 +140,7 @@ export interface Order {
   promotionCode: string | null;
   bonusUsed: number;
   estimatedMinutes: number | null;
+  scheduledAt: string | null;
   confirmedAt: string | null;
   cookingAt: string | null;
   readyAt: string | null;
@@ -179,6 +180,52 @@ export interface Analytics {
   recentOrders: Order[];
   ordersByDay?: { date: string; count: number; revenue: number }[];
   revenueByCategory?: { category: string; revenue: number }[];
+}
+
+export type CampaignType = 'win_back' | 'promo' | 'notification';
+export type CampaignStatus = 'draft' | 'active' | 'paused' | 'completed';
+
+export interface Campaign {
+  id: string;
+  brandId: string;
+  name: string;
+  type: CampaignType;
+  status: CampaignStatus;
+  subject: string;
+  body: string;
+  targetSegment: string | null;
+  channel: string;
+  sentCount: number;
+  openedCount: number;
+  clickedCount: number;
+  scheduledAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CampaignFormData {
+  name: string;
+  type: CampaignType;
+  subject: string;
+  body: string;
+  targetSegment: string;
+  channel: string;
+}
+
+export interface AdvancedAnalytics {
+  customerSegments: {
+    segment: string;
+    count: number;
+    totalSpent: number;
+    avgCheck: number;
+  }[];
+  ordersByHour: { hour: number; count: number; revenue: number }[];
+  ordersByDayOfWeek: { day: number; count: number; revenue: number }[];
+  checkoutFunnel: { carts: number; checkouts: number; completed: number };
+  repeatRate: number;
+  totalCustomers: number;
 }
 
 // API Response wrapper

@@ -876,3 +876,90 @@ Stage Summary:
 - Customers see real-time toast notifications when their order status changes
 - Full localization support (uk/ru/en)
 - Tracks up to 10 active orders via WebSocket
+
+---
+Task ID: 8.4
+Agent: advanced-analytics-builder
+Task: Build Advanced Analytics API + Admin Page
+
+Work Log:
+- Created `src/app/api/admin/analytics/advanced/route.ts` — GET endpoint with admin auth, brandId scoping
+  - Customer segments via raw SQL aggregation (new, returning_2_5, loyal_6_plus, high_value)
+  - Orders by hour via `strftime('%H', "createdAt")`
+  - Orders by day of week via `strftime('%w', "createdAt")` with SQLite 0=Sun → 1=Mon mapping
+  - Checkout funnel: Cart count → Order count → Completed order count
+  - Repeat rate: users with 2+ orders / total users
+- Created `src/app/admin/analytics-advanced/page.tsx` — responsive card grid layout
+  - Card 1: Customer Segmentation table (col-span-2) with color-coded rows
+  - Card 2: Key Metrics (total customers, repeat rate with progress bar, avg check, peak hour)
+  - Card 3: Checkout Funnel (full width) with proportional bars and conversion rates
+  - Card 4: Orders by Hour (col-span-2) — 24-bar chart with peak hour highlighted
+  - Card 5: Orders by Day of Week — 7-bar chart with i18n day labels
+- Used existing i18n keys, shadcn/ui Card/Table/Progress/Skeleton components
+- Lint passes on new files (pre-existing error in recommendations-block.tsx is unrelated)
+
+Stage Summary:
+- Advanced Analytics feature fully implemented with API + admin page
+- All data computed from Prisma queries + raw SQL for complex aggregations
+- Responsive layout: 1 col mobile, 2 cols md, 3 cols lg
+
+---
+Task ID: 8.3
+Agent: campaigns-builder
+Task: Build Campaigns & Win-back feature (APIs + admin page)
+
+Work Log:
+- Created `src/app/api/admin/campaigns/route.ts` — GET (paginated, brand-scoped, optional status filter, includes message counts) + POST (create with CampaignFormData, defaults status='draft')
+- Created `src/app/api/admin/campaigns/[id]/route.ts` — GET (single with _count.messages), PUT (update name/type/subject/body/targetSegment/channel/status), DELETE (only if status='draft')
+- Created `src/app/api/admin/campaigns/[id]/send/route.ts` — POST send simulation: finds users matching targetSegment (all, new, inactive_7d/14d/30d, high_value) via groupBy queries on Order table, creates CampaignMessage records in batches of 100, updates campaign to completed
+- Created `src/app/admin/campaigns/page.tsx` — Full CRUD page following promotions pattern: table with color-coded type/status badges, create/edit dialog with form fields, send button on draft campaigns with confirmation, delete with confirmation (draft only), exported `usePendingCampaignCount` for future sidebar badge, all text via i18n `admin.campaigns.*` keys
+
+Stage Summary:
+- 3 API endpoints + 1 admin page created
+- Campaign CRUD with send simulation fully functional
+
+---
+Task ID: 8.5+8.6
+Agent: responsive-dark-mode
+Task: Mobile Admin responsive tables (8.5) + Storefront dark mode toggle (8.6)
+
+Work Log:
+- Added mobile card views (md:hidden) to 6 admin table pages: orders, products, branches, promotions, reviews, feedback
+- Each page: hidden desktop table with `hidden md:block`, mobile card view with `md:hidden space-y-3`
+- Cards use shadcn/ui Card component with key info: identifier, status badge, important fields, action buttons
+- Orders cards show: order number, status badge, customer, branch/amount, date, payment method, delivery type
+- Products cards show: name, category, price, weight, availability badge, edit/delete actions
+- Branches cards show: name, city, address, status badge, order count, edit/toggle/delete actions
+- Promotions cards show: name, code, status badge, type, value, date range, usage count, edit/delete actions
+- Reviews cards show: reviewer, product, rating stars, comment preview, status badge, date, approve/reject/reply/delete actions
+- Feedback cards show: subject, from, status badge, type badge, message preview, date, view action
+- Added theme toggle button (Sun/Moon with animated transition) to storefront header before LanguageSwitcher
+- Uses `useTheme` from next-themes with animated icon rotation/scale CSS transitions
+- All existing i18n keys used; no locale files modified
+
+Stage Summary:
+- All 6 admin pages now responsive with mobile card views replacing tables on small screens
+- Storefront header has dark mode toggle matching admin header pattern
+- All modified files pass ESLint cleanly
+- Lint clean (only pre-existing error in unrelated file)
+
+---
+Task ID: 8.1+8.2
+Agent: features-agent
+Task: Personalized Recommendations + Pre-order / Scheduled Delivery
+
+Work Log:
+- **8.1 Recommendations Backend**: Created `/api/recommendations/route.ts` — GET endpoint with `requireAuth`, takes `branchId` query param. Queries OrderItem for user's past product IDs, FavoriteProduct for favorites, and uses `groupBy` on OrderItem to find top-ordered products for the branch. Returns `{ orderedBefore: Product[], popular: Product[] }` with only available products.
+- **8.1 Recommendations Frontend**: Created `src/components/storefront/recommendations-block.tsx` — horizontal scrollable card row with Sparkles icon header, two sections ("Ви замовляли раніше" and "Популярне"), each showing product cards with emoji placeholder/image, name, price, and "Додати" button. Only renders for authenticated users.
+- **8.1 Integration**: Added `RecommendationsBlock` import to `menu-view.tsx` and placed it before the search bar in `MenuContent` component, conditionally rendered when `isAuthenticated`.
+- **8.1 Store**: Added `recommendations: { list: (branchId: string) => apiFetch(...) }` to the API object in `store.ts`.
+- **8.2 Backend (auth)**: Modified `order.service.ts` to accept `scheduledAt?: string` in `CreateOrderParams` and pass `new Date(params.scheduledAt)` to `db.order.create`. Updated `/api/orders/route.ts` to destructure `scheduledAt` from body and forward it to `createOrderFromCart`.
+- **8.2 Backend (guest)**: Modified `/api/orders/guest/route.ts` to destructure `scheduledAt` from body and pass `new Date(scheduledAt)` to `db.order.create`.
+- **8.2 Frontend**: Modified `checkout-view.tsx` — added scheduling state (`scheduleMode`, `selectedTimeSlot`), `useMemo` time slot generator (30-min intervals 10:00-22:00, filtered for today's remaining slots), `scheduledAtISO` computed ISO string, and `scheduledDisplay` formatted string. Added delivery time section to Step 0 (below delivery/pickup toggle) with ASAP/Today/Tomorrow buttons and time slot grid. Added scheduled delivery badge with Clock icon on confirmation step. Passes `scheduledAt` in both guest and auth order payloads.
+
+Stage Summary:
+- Personalized recommendations: backend API + frontend horizontal scroll block integrated into menu
+- Pre-order / scheduled delivery: backend scheduledAt support on both auth and guest order creation + frontend time slot picker UI
+- All files pass `bun run lint` cleanly
+- i18n keys used: `recommendations.title`, `recommendations.orderedBefore`, `recommendations.popular`, `scheduled.deliveryTime`, `scheduled.asap`, `scheduled.today`, `scheduled.tomorrow`, `scheduled.selectTime`, `scheduled.scheduledOrder`, `scheduled.noSlots`
+- No i18n locale files or Prisma schema files were modified

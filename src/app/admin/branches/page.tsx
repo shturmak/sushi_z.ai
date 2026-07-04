@@ -29,6 +29,7 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table';
+import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useT } from '@/i18n';
 
@@ -457,11 +458,69 @@ export default function BranchesPage() {
         />
       </div>
 
-      {/* Table */}
+      {/* Mobile card view */}
+      {!loading && (
+        <div className="md:hidden space-y-3">
+          {filtered.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">{t('common.noData')}</div>
+          ) : (
+            filtered.map((branch) => (
+              <Card key={branch.id} className="p-4 gap-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="font-semibold">{branch.name}</div>
+                    <div className="text-sm text-muted-foreground">{extractCity(branch.address)}</div>
+                  </div>
+                  <ActiveToggleBadge active={branch.isOpen} />
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {branch.address}
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t">
+                  <span className="text-sm text-muted-foreground">
+                    {t('admin.branches.orders')}: {branch._count?.orders ?? 0}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleOpenEdit(branch)}
+                      aria-label={t('common.edit')}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleToggle(branch)}
+                      aria-label={branch.isOpen ? t('admin.branches.isOpen') : ''}
+                    >
+                      <Power className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => setDeleteTarget(branch)}
+                      aria-label={t('common.delete')}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Table — desktop only */}
       {loading ? (
         <TableSkeleton rows={5} cols={6} />
       ) : (
-        <div className="rounded-md border">
+        <div className="hidden md:block rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>

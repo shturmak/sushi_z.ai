@@ -221,6 +221,8 @@ const uk = {
       promotions: 'Акції / Промокоди',
       reviews: 'Відгуки',
       feedback: 'Зворотний зв\'язок',
+      campaigns: 'Кампанії',
+      advancedAnalytics: 'Аналітика+',
     },
 
     analytics: {
@@ -425,6 +427,72 @@ const uk = {
       date: 'Дата',
     },
 
+    campaigns: {
+      title: 'Кампанії',
+      create: 'Створити кампанію',
+      edit: 'Редагувати кампанію',
+      deleteConfirm: 'Видалити цю кампанію?',
+      name: 'Назва',
+      type: 'Тип',
+      types: {
+        win_back: 'Повернення клієнтів',
+        promo: 'Промо',
+        notification: 'Сповіщення',
+      },
+      status: 'Статус',
+      statuses: {
+        draft: 'Чернетка',
+        active: 'Активна',
+        paused: 'Призупинена',
+        completed: 'Завершена',
+      },
+      subject: 'Тема',
+      body: 'Тіло повідомлення',
+      targetSegment: 'Цільовий сегмент',
+      segments: {
+        all: 'Всі клієнти',
+        new: 'Нові клієнти',
+        inactive_7d: 'Неактивні 7 днів',
+        inactive_14d: 'Неактивні 14 днів',
+        inactive_30d: 'Неактивні 30 днів',
+        high_value: 'VIP клієнти',
+      },
+      channel: 'Канал',
+      channels: {
+        telegram: 'Telegram',
+        email: 'Email',
+        sms: 'SMS',
+        push: 'Push',
+      },
+      send: 'Надіслати',
+      sendConfirm: 'Надіслати кампанію {count} отримувачам?',
+      sentCount: 'Надіслано',
+      openedCount: 'Відкрито',
+      clickedCount: 'Кліків',
+      noCampaigns: 'Немає кампаній',
+      preview: 'Перегляд',
+      recipients: 'Отримувачів',
+      bodyPlaceholder: 'Використовуйте {name}, {bonusBalance} для персоналізації...',
+      sent: 'Кампанію надіслано',
+    },
+
+    advancedAnalytics: {
+      title: 'Розширена аналітика',
+      customerSegmentation: 'Сегментація клієнтів',
+      newCustomers: 'Нові клієнти',
+      returningCustomers: 'Повертаються',
+      avgCheckBySegment: 'Середній чек за сегментами',
+      ordersByHour: 'Замовлення за годинами',
+      ordersByDayOfWeek: 'Замовлення за днями тижня',
+      checkoutFunnel: 'Воронка чекауту',
+      funnelCart: 'Створено кошиків',
+      funnelCheckout: 'Почали оформлення',
+      funnelCompleted: 'Завершено замовлень',
+      conversionRate: 'Конверсія',
+      repeatRate: 'Показник повторних замовлень',
+      days: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'],
+    },
+
     brands: {
       title: 'Бренди',
       create: 'Додати бренд',
@@ -518,6 +586,35 @@ const uk = {
     contactInfo: 'Контактні дані',
     contactInfoPlaceholder: 'Телефон або email для зв\'язку',
     linkedOrder: 'Пов\'язане замовлення',
+  },
+
+  // ── 8.1 Recommendations ──────────────────
+  recommendations: {
+    title: 'Рекомендації для вас',
+    orderedBefore: 'Ви замовляли раніше',
+    popular: 'Популярне',
+    forYou: 'Для вас',
+    basedOnOrders: 'Базується на ваших попередніх замовленнях',
+  },
+
+  // ── 8.2 Pre-order / Scheduling ──────────
+  scheduled: {
+    deliveryTime: 'Час доставки',
+    asap: 'Якомога швидше',
+    today: 'Сьогодні',
+    tomorrow: 'Завтра',
+    selectTime: 'Оберіть час',
+    scheduledOrder: 'Заплановане замовлення',
+    timeSlots: 'Часові слоти',
+    noSlots: 'Немає доступних слотів',
+  },
+
+  // ── 8.6 Theme ──────────────────
+  theme: {
+    light: 'Світла',
+    dark: 'Темна',
+    system: 'Системна',
+    toggle: 'Змінити тему',
   },
 } as const
 

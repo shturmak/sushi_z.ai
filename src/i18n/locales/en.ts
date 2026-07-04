@@ -221,6 +221,8 @@ const en: Messages = {
       promotions: 'Promotions',
       reviews: 'Reviews',
       feedback: 'Feedback',
+      campaigns: 'Campaigns',
+      advancedAnalytics: 'Analytics+',
     },
 
     analytics: {
@@ -425,6 +427,72 @@ const en: Messages = {
       date: 'Date',
     },
 
+    campaigns: {
+      title: 'Campaigns',
+      create: 'Create campaign',
+      edit: 'Edit campaign',
+      deleteConfirm: 'Delete this campaign?',
+      name: 'Name',
+      type: 'Type',
+      types: {
+        win_back: 'Win-back',
+        promo: 'Promo',
+        notification: 'Notification',
+      },
+      status: 'Status',
+      statuses: {
+        draft: 'Draft',
+        active: 'Active',
+        paused: 'Paused',
+        completed: 'Completed',
+      },
+      subject: 'Subject',
+      body: 'Message body',
+      targetSegment: 'Target segment',
+      segments: {
+        all: 'All customers',
+        new: 'New customers',
+        inactive_7d: 'Inactive 7 days',
+        inactive_14d: 'Inactive 14 days',
+        inactive_30d: 'Inactive 30 days',
+        high_value: 'VIP customers',
+      },
+      channel: 'Channel',
+      channels: {
+        telegram: 'Telegram',
+        email: 'Email',
+        sms: 'SMS',
+        push: 'Push',
+      },
+      send: 'Send',
+      sendConfirm: 'Send campaign to {count} recipients?',
+      sentCount: 'Sent',
+      openedCount: 'Opened',
+      clickedCount: 'Clicks',
+      noCampaigns: 'No campaigns',
+      preview: 'Preview',
+      recipients: 'Recipients',
+      bodyPlaceholder: 'Use {name}, {bonusBalance} for personalization...',
+      sent: 'Campaign sent',
+    },
+
+    advancedAnalytics: {
+      title: 'Advanced Analytics',
+      customerSegmentation: 'Customer Segmentation',
+      newCustomers: 'New customers',
+      returningCustomers: 'Returning',
+      avgCheckBySegment: 'Avg check by segment',
+      ordersByHour: 'Orders by hour',
+      ordersByDayOfWeek: 'Orders by day of week',
+      checkoutFunnel: 'Checkout Funnel',
+      funnelCart: 'Carts created',
+      funnelCheckout: 'Started checkout',
+      funnelCompleted: 'Orders completed',
+      conversionRate: 'Conversion rate',
+      repeatRate: 'Repeat order rate',
+      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    },
+
     brands: {
       title: 'Brands',
       create: 'Add Brand',
@@ -518,6 +586,35 @@ const en: Messages = {
     contactInfo: 'Contact info',
     contactInfoPlaceholder: 'Phone or email for contact',
     linkedOrder: 'Linked order',
+  },
+
+  // ── 8.1 Recommendations ──────────────────
+  recommendations: {
+    title: 'Recommendations for you',
+    orderedBefore: 'You ordered before',
+    popular: 'Popular',
+    forYou: 'For you',
+    basedOnOrders: 'Based on your previous orders',
+  },
+
+  // ── 8.2 Pre-order / Scheduling ──────────
+  scheduled: {
+    deliveryTime: 'Delivery time',
+    asap: 'As soon as possible',
+    today: 'Today',
+    tomorrow: 'Tomorrow',
+    selectTime: 'Select time',
+    scheduledOrder: 'Scheduled order',
+    timeSlots: 'Time slots',
+    noSlots: 'No available slots',
+  },
+
+  // ── 8.6 Theme ──────────────────
+  theme: {
+    light: 'Light',
+    dark: 'Dark',
+    system: 'System',
+    toggle: 'Toggle theme',
   },
 }
 

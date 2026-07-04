@@ -39,6 +39,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Card } from '@/components/ui/card';
 import { useT } from '@/i18n';
 
 // ── Helpers ──────────────────────────────────────────────
@@ -195,10 +196,54 @@ export default function PromotionsPage() {
         action={{ label: t('admin.promotions.create'), onClick: openCreate }}
       />
 
+      {/* Mobile card view */}
+      {!loading && (
+        <div className="md:hidden space-y-3">
+          {promotions.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">{t('common.noData')}</div>
+          ) : (
+            promotions.map((p) => (
+              <Card key={p.id} className="p-4 gap-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="font-medium">{p.name}</div>
+                    {p.code && (
+                      <div className="text-sm text-muted-foreground">{p.code}</div>
+                    )}
+                  </div>
+                  <PromotionStatusBadge status={p.status} />
+                </div>
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                  <PromotionTypeBadge type={p.type} />
+                  <span>{formatValue(p.type, p.value)}</span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {format(parseISO(p.startDate), 'dd.MM.yy')} — {format(parseISO(p.endDate), 'dd.MM.yy')}
+                  <span className="ml-2">
+                    {p.maxUses !== null ? `${p.usedCount}/${p.maxUses}` : `${p.usedCount}/∞`}
+                  </span>
+                </div>
+                <div className="flex items-center justify-end gap-1 pt-1 border-t">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}>
+                    <Pencil className="h-4 w-4" />
+                    <span className="sr-only">{t('common.edit')}</span>
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteTarget(p)}>
+                    <Trash2 className="h-4 w-4" />
+                    <span className="sr-only">{t('common.delete')}</span>
+                  </Button>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Table — desktop only */}
       {loading ? (
         <TableSkeleton rows={6} cols={8} />
       ) : (
-        <div className="rounded-md border">
+        <div className="hidden md:block rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>

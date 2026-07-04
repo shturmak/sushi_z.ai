@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useBrand, useAuth, API } from '@/lib/store'
 import { useGuestCart } from '@/lib/guest-cart'
 import { useT } from '@/i18n'
@@ -134,6 +134,51 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
   const [zonesLoaded, setZonesLoaded] = useState(false)
   const [fetchBranchId, setFetchBranchId] = useState<string | null>(null)
 const [freeDeliveryPromo, setFreeDeliveryPromo] = useState(false)
+
+  // Scheduled delivery
+  const [scheduleMode, setScheduleMode] = useState<'asap' | 'today' | 'tomorrow'>('asap')
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('')
+
+  // Generate 30-min time slots from 10:00 to 22:00
+  const timeSlots = useMemo(() => {
+    const slots: string[] = []
+    for (let h = 10; h < 22; h++) {
+      for (const m of [0, 30]) {
+        const hh = String(h).padStart(2, '0')
+        const mm = String(m).padStart(2, '0')
+        slots.push(`${hh}:${mm}`)
+      }
+    }
+    // Filter: for today, only future slots
+    const now = new Date()
+    const currentMinutes = now.getHours() * 60 + now.getMinutes()
+    if (scheduleMode === 'today') {
+      return slots.filter((s) => {
+        const [h, m] = s.split(':').map(Number)
+        return h * 60 + m > currentMinutes + 30 // at least 30 min from now
+      })
+    }
+    return slots
+  }, [scheduleMode])
+
+  // Build scheduledAt ISO string
+  const scheduledAtISO = useMemo(() => {
+    if (scheduleMode === 'asap' || !selectedTimeSlot) return undefined
+    const target = new Date()
+    if (scheduleMode === 'tomorrow') {
+      target.setDate(target.getDate() + 1)
+    }
+    const [h, m] = selectedTimeSlot.split(':').map(Number)
+    target.setHours(h, m, 0, 0)
+    return target.toISOString()
+  }, [scheduleMode, selectedTimeSlot])
+
+  // Format scheduled time for display
+  const scheduledDisplay = useMemo(() => {
+    if (scheduleMode === 'asap' || !selectedTimeSlot) return ''
+    const dayLabel = scheduleMode === 'tomorrow' ? t('scheduled.tomorrow') : t('scheduled.today')
+    return `${dayLabel}, ${selectedTimeSlot}`
+  }, [scheduleMode, selectedTimeSlot, t])
 
   // Submit
   const [submitting, setSubmitting] = useState(false)
@@ -324,6 +369,7 @@ const [freeDeliveryPromo, setFreeDeliveryPromo] = useState(false)
           quantity: i.quantity,
         })),
         note: comment || undefined,
+        scheduledAt: scheduledAtISO,
       }
 
       if (orderType === 'delivery') {
@@ -362,6 +408,7 @@ const [freeDeliveryPromo, setFreeDeliveryPromo] = useState(false)
       promotionCode: promoData?.code || null,
       useBonus: bonusToUse > 0 ? bonusToUse : 0,
       note: comment || null,
+      scheduledAt: scheduledAtISO,
     }
 
     if (orderType === 'delivery') {
@@ -461,6 +508,72 @@ const [freeDeliveryPromo, setFreeDeliveryPromo] = useState(false)
               </p>
             </div>
           </button>
+
+          {/* Delivery Time Section */}
+          <div className="space-y-3 pt-2">
+            <p className="text-sm font-medium flex items-center gap-1.5">
+              <Clock className="size-4 text-muted-foreground" />
+              {t('scheduled.deliveryTime')}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setScheduleMode('asap'); setSelectedTimeSlot('') }}
+                className={`flex-1 rounded-lg border-2 px-3 py-2 text-sm font-medium transition-all ${
+                  scheduleMode === 'asap' ? 'border-current' : 'border-transparent bg-muted/50'
+                }`}
+                style={scheduleMode === 'asap' ? { color: primaryColor, borderColor: primaryColor } : {}}
+              >
+                {t('scheduled.asap')}
+              </button>
+              <button
+                onClick={() => { setScheduleMode('today'); setSelectedTimeSlot('') }}
+                className={`flex-1 rounded-lg border-2 px-3 py-2 text-sm font-medium transition-all ${
+                  scheduleMode === 'today' ? 'border-current' : 'border-transparent bg-muted/50'
+                }`}
+                style={scheduleMode === 'today' ? { color: primaryColor, borderColor: primaryColor } : {}}
+              >
+                {t('scheduled.today')}
+              </button>
+              <button
+                onClick={() => { setScheduleMode('tomorrow'); setSelectedTimeSlot('') }}
+                className={`flex-1 rounded-lg border-2 px-3 py-2 text-sm font-medium transition-all ${
+                  scheduleMode === 'tomorrow' ? 'border-current' : 'border-transparent bg-muted/50'
+                }`}
+                style={scheduleMode === 'tomorrow' ? { color: primaryColor, borderColor: primaryColor } : {}}
+              >
+                {t('scheduled.tomorrow')}
+              </button>
+            </div>
+
+            {/* Time slot selector */}
+            {scheduleMode !== 'asap' && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">{t('scheduled.selectTime')}</p>
+                {timeSlots.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">{t('scheduled.noSlots')}</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {timeSlots.map((slot) => (
+                      <button
+                        key={slot}
+                        onClick={() => setSelectedTimeSlot(slot)}
+                        className={`rounded-lg border-2 px-3 py-1.5 text-sm font-medium transition-all ${
+                          selectedTimeSlot === slot ? 'border-current text-white' : 'border-transparent bg-muted/50'
+                        }`}
+                        style={
+                          selectedTimeSlot === slot
+                            ? { backgroundColor: primaryColor, borderColor: primaryColor, color: '#fff' }
+                            : {}
+                        }
+                      >
+                        {slot}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -818,6 +931,16 @@ const [freeDeliveryPromo, setFreeDeliveryPromo] = useState(false)
                     : t('checkout.paymentCash')}
                 </span>
               </div>
+
+              {/* Scheduled delivery badge */}
+              {scheduledDisplay && (
+                <div className="flex items-center gap-2 pt-1">
+                  <Badge variant="outline" className="gap-1.5 text-xs">
+                    <Clock className="size-3" />
+                    {t('scheduled.scheduledOrder')}: {scheduledDisplay}
+                  </Badge>
+                </div>
+              )}
 
               {submitError && (
                 <p className="text-sm text-destructive">{submitError}</p>

@@ -43,6 +43,7 @@ model Brand {
   reviews         Review[]
   favoriteProducts FavoriteProduct[]
   feedbacks       Feedback[]
+  campaigns       Campaign[]
 
   @@map("brands")
 }
@@ -357,6 +358,9 @@ model Order {
   // Estimated
   estimatedMinutes Int?
 
+  // 8.2 — Scheduled delivery / pre-order
+  scheduledAt    DateTime?  // desired delivery/pickup time
+
   // Timeline
   confirmedAt   DateTime?
   cookingAt     DateTime?
@@ -579,4 +583,61 @@ model Feedback {
   order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
 
   @@map("feedbacks")
+}
+
+// ──────────────────────────────────────────────
+//  8.3 — CAMPAIGNS & WIN-BACK
+// ──────────────────────────────────────────────
+
+enum CampaignType {
+  win_back
+  promo
+  notification
+}
+
+enum CampaignStatus {
+  draft
+  active
+  paused
+  completed
+}
+
+model Campaign {
+  id              String         @id @default(cuid())
+  brandId         String
+  name            String
+  type            CampaignType
+  status          CampaignStatus @default(draft)
+  subject         String
+  body            String         // message body (template, may include {name}, {bonusBalance}, etc.)
+  targetSegment   String?        // all, new, inactive_7d, inactive_14d, inactive_30d, high_value
+  channel         String         @default("telegram") // telegram, email, sms, push
+  sentCount       Int            @default(0)
+  openedCount     Int            @default(0)
+  clickedCount    Int            @default(0)
+  scheduledAt     DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  brand           Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  messages        CampaignMessage[]
+
+  @@map("campaigns")
+}
+
+model CampaignMessage {
+  id           String   @id @default(cuid())
+  campaignId   String
+  userId       String
+  channel      String
+  status       String   @default("pending") // pending, sent, failed, opened, clicked
+  sentAt       DateTime?
+  openedAt     DateTime?
+  createdAt    DateTime @default(now())
+
+  campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@map("campaign_messages")
 }

@@ -163,6 +163,9 @@ export const API = {
     add: (productId: string) => apiFetch('/api/favorites', { method: 'POST', body: JSON.stringify({ productId }) }),
     remove: (productId: string) => apiFetch('/api/favorites', { method: 'DELETE', body: JSON.stringify({ productId }) }),
   },
+  recommendations: {
+    list: (branchId: string) => apiFetch('/api/recommendations?branchId=' + branchId),
+  },
   brands: {
     list: () => apiFetch('/api/brands'),
   },

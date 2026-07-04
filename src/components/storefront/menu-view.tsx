@@ -41,6 +41,7 @@ import {
   X,
 } from 'lucide-react'
 import { StarRating, StarRatingText } from '@/components/ui/star-rating'
+import RecommendationsBlock from '@/components/storefront/recommendations-block'
 import {
   Dialog,
   DialogContent,
@@ -599,6 +600,15 @@ function MenuContent({
 
   return (
     <>
+      {/* Recommendations (auth only, before categories) */}
+      {isAuthenticated && (
+        <RecommendationsBlock
+          branchId={branchId}
+          onAddToCart={onAddToCart}
+          primaryColor={primaryColor}
+        />
+      )}
+
       {/* Search & Filter Bar */}
       <div className="mb-4 flex gap-2">
         <div className="relative flex-1">

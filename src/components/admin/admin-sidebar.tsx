@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   BarChart3, Building2, Store, MapPin, UtensilsCrossed, ShoppingCart,
-  Tag, Star, MessageCircleWarning, ChevronDown, ChevronRight,
+  Tag, Star, MessageCircleWarning, ChevronDown, ChevronRight, Megaphone, BarChartBig,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -53,6 +53,8 @@ export function AdminSidebar() {
     { href: '/admin/promotions', label: t('admin.sidebar.promotions'), icon: Tag },
     { href: '/admin/reviews', label: t('admin.sidebar.reviews'), icon: Star },
     { href: '/admin/feedback', label: t('admin.sidebar.feedback'), icon: MessageCircleWarning },
+    { href: '/admin/campaigns', label: t('admin.sidebar.campaigns'), icon: Megaphone },
+    { href: '/admin/analytics-advanced', label: t('admin.sidebar.advancedAnalytics'), icon: BarChartBig },
   ];
 
   return (

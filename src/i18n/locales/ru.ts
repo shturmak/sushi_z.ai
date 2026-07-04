@@ -221,6 +221,8 @@ const ru: Messages = {
       promotions: 'Акции / Промокоды',
       reviews: 'Отзывы',
       feedback: 'Обратная связь',
+      campaigns: 'Кампании',
+      advancedAnalytics: 'Аналитика+',
     },
 
     analytics: {
@@ -425,6 +427,72 @@ const ru: Messages = {
       date: 'Дата',
     },
 
+    campaigns: {
+      title: 'Кампании',
+      create: 'Создать кампанию',
+      edit: 'Редактировать кампанию',
+      deleteConfirm: 'Удалить эту кампанию?',
+      name: 'Название',
+      type: 'Тип',
+      types: {
+        win_back: 'Возврат клиентов',
+        promo: 'Промо',
+        notification: 'Уведомление',
+      },
+      status: 'Статус',
+      statuses: {
+        draft: 'Черновик',
+        active: 'Активна',
+        paused: 'Приостановлена',
+        completed: 'Завершена',
+      },
+      subject: 'Тема',
+      body: 'Тело сообщения',
+      targetSegment: 'Целевой сегмент',
+      segments: {
+        all: 'Все клиенты',
+        new: 'Новые клиенты',
+        inactive_7d: 'Неактивные 7 дней',
+        inactive_14d: 'Неактивные 14 дней',
+        inactive_30d: 'Неактивные 30 дней',
+        high_value: 'VIP клиенты',
+      },
+      channel: 'Канал',
+      channels: {
+        telegram: 'Telegram',
+        email: 'Email',
+        sms: 'SMS',
+        push: 'Push',
+      },
+      send: 'Отправить',
+      sendConfirm: 'Отправить кампанию {count} получателям?',
+      sentCount: 'Отправлено',
+      openedCount: 'Открыто',
+      clickedCount: 'Кликов',
+      noCampaigns: 'Нет кампаний',
+      preview: 'Просмотр',
+      recipients: 'Получателей',
+      bodyPlaceholder: 'Используйте {name}, {bonusBalance} для персонализации...',
+      sent: 'Кампания отправлена',
+    },
+
+    advancedAnalytics: {
+      title: 'Расширенная аналитика',
+      customerSegmentation: 'Сегментация клиентов',
+      newCustomers: 'Новые клиенты',
+      returningCustomers: 'Возвращаются',
+      avgCheckBySegment: 'Средний чек по сегментам',
+      ordersByHour: 'Заказы по часам',
+      ordersByDayOfWeek: 'Заказы по дням недели',
+      checkoutFunnel: 'Воронка чекаута',
+      funnelCart: 'Создано корзин',
+      funnelCheckout: 'Начали оформление',
+      funnelCompleted: 'Завершено заказов',
+      conversionRate: 'Конверсия',
+      repeatRate: 'Показатель повторных заказов',
+      days: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+    },
+
     brands: {
       title: 'Бренды',
       create: 'Добавить бренд',
@@ -518,6 +586,35 @@ const ru: Messages = {
     contactInfo: 'Контактные данные',
     contactInfoPlaceholder: 'Телефон или email для связи',
     linkedOrder: 'Связанный заказ',
+  },
+
+  // ── 8.1 Recommendations ──────────────────
+  recommendations: {
+    title: 'Рекомендации для вас',
+    orderedBefore: 'Вы заказывали ранее',
+    popular: 'Популярное',
+    forYou: 'Для вас',
+    basedOnOrders: 'Основано на ваших предыдущих заказах',
+  },
+
+  // ── 8.2 Pre-order / Scheduling ──────────
+  scheduled: {
+    deliveryTime: 'Время доставки',
+    asap: 'Как можно быстрее',
+    today: 'Сегодня',
+    tomorrow: 'Завтра',
+    selectTime: 'Выберите время',
+    scheduledOrder: 'Запланированный заказ',
+    timeSlots: 'Временные слоты',
+    noSlots: 'Нет доступных слотов',
+  },
+
+  // ── 8.6 Theme ──────────────────
+  theme: {
+    light: 'Светлая',
+    dark: 'Тёмная',
+    system: 'Системная',
+    toggle: 'Сменить тему',
   },
 }
 

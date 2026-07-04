@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
       items,
       note,
       promotionCode,
+      scheduledAt,
     } = body;
 
     // ── Validation ───────────────────────────────────────
@@ -211,6 +212,7 @@ export async function POST(request: NextRequest) {
           promotionCode: promotionCode || null,
           bonusUsed: 0,
           estimatedMinutes,
+          scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
         },
       });
 
