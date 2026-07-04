@@ -7,7 +7,7 @@
 // ALL checks must pass before running `prisma migrate dev`.
 // =============================================================================
 
-import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync, renameSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { exit } from "node:process";
 
@@ -147,6 +147,64 @@ function hasBrandIndex(modelBody: string): boolean {
   return /@@index\(\[brandId\]\)/.test(modelBody);
 }
 
+// ─── Env helper ───────────────────────────────────────────────────────────
+// Prisma WASM config parser may fail to read DATABASE_URL from .env in some
+// environments (Bun sandbox).  We read .env manually and inject it so that
+// schema-only checks (validate, generate) always succeed even without a
+// running PostgreSQL instance.
+
+function loadDotEnv(path: string): Record<string, string> {
+  const vars: Record<string, string> = {};
+  if (!existsSync(path)) return vars;
+  for (const raw of readFileSync(path, "utf-8").split("\n")) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+    const eq = line.indexOf("=");
+    if (eq === -1) continue;
+    const key = line.slice(0, eq).trim();
+    let val = line.slice(eq + 1).trim();
+    // strip surrounding quotes
+    if (
+      (val.startsWith('"') && val.endsWith('"')) ||
+      (val.startsWith("'") && val.endsWith("'"))
+    ) {
+      val = val.slice(1, -1);
+    }
+    vars[key] = val;
+  }
+  return vars;
+}
+
+const dotEnvVars = loadDotEnv(join(ROOT, ".env"));
+const envPath = join(ROOT, ".env");
+const envBackup = join(ROOT, ".env.__pre_migration_backup__");
+
+/** Spawn prisma with DATABASE_URL injected directly.
+ *  Prisma WASM config can fail to parse .env in some Bun environments,
+ *  so we temporarily hide .env and pass the URL via process.env. */
+function prismaCmd(args: string[]) {
+  let hid = false;
+  if (existsSync(envPath)) {
+    renameSync(envPath, envBackup);
+    hid = true;
+  }
+  try {
+    return Bun.spawnSync(["bunx", "prisma", ...args], {
+      cwd: ROOT,
+      stdout: "pipe",
+      stderr: "pipe",
+      env: {
+        ...process.env,
+        DATABASE_URL: dotEnvVars.DATABASE_URL || process.env.DATABASE_URL || "",
+      },
+    });
+  } finally {
+    if (hid && existsSync(envBackup)) {
+      renameSync(envBackup, envPath);
+    }
+  }
+}
+
 // ─── Checks ─────────────────────────────────────────────────────────────────
 
 console.log("\n🔍 Pre-Migration Checklist\n");
@@ -154,13 +212,9 @@ console.log("\n🔍 Pre-Migration Checklist\n");
 // 1. Schema validation via `prisma validate`
 {
   const label = "Schema validation (prisma validate)";
-  const proc = Bun.spawnSync(["bunx", "prisma", "validate"], {
-    cwd: ROOT,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
+  const proc = prismaCmd(["validate"]);
   const stdout = new TextDecoder().decode(proc.stdout).trim();
-  if (proc.exitCode === 0 && stdout.includes("The schema is valid")) {
+  if (proc.exitCode === 0 && stdout.includes("is valid")) {
     pass(label);
   } else {
     const stderr = new TextDecoder().decode(proc.stderr).trim();
@@ -171,11 +225,7 @@ console.log("\n🔍 Pre-Migration Checklist\n");
 // 2. Prisma client generation via `prisma generate`
 {
   const label = "Prisma client generation (prisma generate)";
-  const proc = Bun.spawnSync(["bunx", "prisma", "generate"], {
-    cwd: ROOT,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
+  const proc = prismaCmd(["generate"]);
   if (proc.exitCode === 0) {
     pass(label);
   } else {

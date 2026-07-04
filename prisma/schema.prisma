@@ -372,7 +372,7 @@ model Order {
   status          OrderStatus @default(new)
 
   // Delivery details
-  addressSnapshot String?     // JSON of delivery address
+  addressSnapshot Json?       // JSON of delivery address
   deliveryFee     Float       @default(0)
 
   // Totals
