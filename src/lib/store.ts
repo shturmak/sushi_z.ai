@@ -140,6 +140,7 @@ export const API = {
     list: (status?: string) => apiFetch(`/api/orders${status ? `?status=${status}` : ''}`),
     get: (id: string) => apiFetch(`/api/orders/${id}`),
     create: (data: any) => apiFetch('/api/orders', { method: 'POST', body: JSON.stringify(data) }),
+    guest: (data: any) => apiFetch('/api/orders/guest', { method: 'POST', body: JSON.stringify(data) }),
     cancel: (id: string) => apiFetch(`/api/orders/${id}/cancel`, { method: 'POST' }),
     repeat: (id: string) => apiFetch(`/api/orders/${id}/repeat`, { method: 'POST' }),
   },

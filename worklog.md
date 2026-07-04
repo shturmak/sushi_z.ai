@@ -738,3 +738,141 @@ Stage Summary:
 - Customers can submit feedback from profile page (type, subject, message, contact)
 - Admins can view, filter, reply to, and manage status of feedback entries
 - Full workflow: New → In progress → Resolved → Closed (with Reopen option)
+
+---
+Task ID: 7.3
+Agent: payment-methods-e2e
+Task: Multiple Payment Methods E2E — cash/bonus auto-succeed, min order validation, auto-confirm
+
+Work Log:
+- Verified LiqPay integration: `result_url` passed via params, `server_url` derived from `getServerCallbackUrl()` with env override support. Apple Pay/Google Pay are automatic via LiqPay's checkout widget. No changes needed.
+- Fixed cash & bonus payment auto-succeed: Changed payment creation in `createOrderFromCart` to set `status: 'succeeded'` for `cash` and `bonus` methods (previously all payments were `'pending'`). Card payments remain `'pending'` until LiqPay webhook confirms.
+- Verified bonus deduction logic: `useBonus > 0` correctly deducts from loyalty account balance, creates `LoyaltyTransaction` of type `spent`, and subtracts from order total via `bonusUsed` field. All already correctly implemented.
+- Fixed double-deduction bug in bonus earn section: The "Earn bonus (5%)" block was computing `newBal = loy.balance - bonusUsed + earned`, but since bonus was already deducted in the same transaction, `loy.balance` (re-queried within tx) already reflected the deduction. Fixed to `newBal = earnLoy.balance + earned`. Renamed variable to `earnLoy` to clarify.
+- Added minimum order amount validation for delivery: When `type === 'delivery'`, fetches branch and checks `branch.minOrderAmount` against subtotal. Returns `{ code: 'MIN_ORDER_AMOUNT', message: '...' }` error if subtotal is below threshold. Validation is skipped for pickup orders.
+- Added auto-confirm with prep time: After transactional order creation, fetches branch and checks `branch.autoConfirm`. If true, updates order status to `confirmed`, sets `confirmedAt`, and calculates `estimatedMinutes`:
+  - Delivery: `deliveryZone.estimatedMinutes + branch.prepTimeMinutes`
+  - Pickup: `branch.prepTimeMinutes`
+- Hoisted `matchingZone` variable outside the delivery block so it's accessible for the auto-confirm estimated time calculation.
+- Lint passes cleanly, dev server runs without errors.
+
+Stage Summary:
+- Cash and bonus payments now auto-succeed at creation time (status: 'succeeded')
+- Card payments remain pending until LiqPay webhook callback
+- Bonus deduction verified correct; fixed a double-deduction bug in bonus earning
+- Delivery orders enforce branch's minimum order amount (configurable per branch)
+- Auto-confirm branches skip 'new' status, go directly to 'confirmed' with accurate estimated time
+- LiqPay Apple/Google Pay works automatically via checkout widget, URLs verified correct
+
+---
+Task ID: 7.4
+Agent: customer-notifications-builder
+Task: Customer Order Notifications via WebSocket
+
+Work Log:
+- Created `src/components/storefront/customer-order-notifications.tsx` — renders nothing, purely for side-effects
+- Uses existing `useOrderWebSocket` hook with `orderIds` option to join order-specific rooms
+- Listens for `order:status_changed` events and maps status to i18n keys (`notifications.orderConfirmed`, etc.)
+- Shows toast.info for status updates, toast.success for completed, toast.error for cancelled
+- Integrated into `src/app/page.tsx`: fetches active order IDs (status in new/confirmed/cooking/ready/delivering) on auth
+- 30-second polling interval refreshes tracked order IDs to pick up new orders placed in-session
+- Max 10 tracked orders to keep WS connection lightweight
+
+Stage Summary:
+- Authenticated customers receive real-time toast notifications when their order status changes
+- Notification messages are fully i18n-localized (en/uk/ru keys already existed)
+- Lint passes cleanly
+
+---
+Task ID: 7.2
+Agent: guest-checkout-builder
+Task: Implement Guest Checkout — allow unauthenticated users to add to cart, checkout, and auto-create accounts
+
+Work Log:
+- Created `/home/z/my-project/src/lib/guest-cart.ts` — Zustand store with `persist` middleware to localStorage (`sc_guest_cart`), providing `addItem`, `removeItem`, `updateQuantity`, `clearCart`, plus derived helpers `getGuestCartTotalCount` and `getGuestCartSubtotal`
+- Added `API.orders.guest` method to `/home/z/my-project/src/lib/store.ts` — POST to `/api/orders/guest`
+- Created `/home/z/my-project/src/app/api/orders/guest/route.ts` — POST handler that:
+  - Accepts guest order data (firstName, lastName, phone, email, branchId, type, paymentMethod, items, etc.)
+  - Validates all required fields
+  - Finds existing user by phone or creates new user with random password hash
+  - Creates loyalty account if needed for the branch brand
+  - Generates JWT access + refresh tokens, stores session
+  - Calculates order items with product prices and option price deltas
+  - Handles delivery fee from delivery zones
+  - Validates and applies promotion codes
+  - Creates order, order items, and payment (cash→succeeded, card→pending)
+  - Awards 5% loyalty bonus on the transaction
+  - Returns order, user, tokens, and loyalty info
+- Modified `/home/z/my-project/src/components/storefront/menu-view.tsx`:
+  - Imported `useGuestCart`
+  - `handleAddToCart` now checks auth: guests add to localStorage cart, authenticated users use API
+  - Added `handleGuestUpdateQuantity` for guest cart manipulation
+  - Synced guest cart count to parent via `onCartCountChange`
+  - Cart Sheet now shows guest cart items with quantity controls when not authenticated
+  - Bottom Cart Bar now renders for guests when `guestCount > 0`
+- Modified `/home/z/my-project/src/components/storefront/checkout-view.tsx`:
+  - Imported `useGuestCart`
+  - Added `isGuest` flag, `effectiveSubtotal` computed value
+  - Guests use 4-step flow (type → address → payment → confirmation) vs 6-step for auth
+  - Payment step hides "bonus" option for guests
+  - Promo code step and bonus step are auth-only
+  - Summary step shows guest cart items and a contact form (firstName*, lastName, phone*, email)
+  - Contact form uses existing i18n keys: `auth.guestTitle`, `auth.guestDesc`, `auth.firstName`, etc.
+  - `handleSubmit` branches: guests call `API.orders.guest()`, auth users call `API.orders.create()`
+  - On guest success: auto-login with returned tokens, clear guest cart, navigate to orders
+
+Stage Summary:
+- Full guest checkout flow operational: browse menu → add items → checkout → auto-create account → auto-login
+- Guest cart persists in localStorage across page reloads
+- Lint passes cleanly
+---
+Task ID: 7.2
+Agent: Main (via subagent)
+Task: Guest checkout — localStorage cart + guest order API + auto-registration
+
+Work Log:
+- Created /src/lib/guest-cart.ts — Zustand store with persist to localStorage
+- Created /src/app/api/orders/guest/route.ts — POST endpoint, no auth required
+- Modified menu-view.tsx — guest cart support (add to localStorage, show cart bar for guests)
+- Modified checkout-view.tsx — 4-step guest flow with name+phone form, auto-login after order
+- Added API.orders.guest() to store.ts
+
+Stage Summary:
+- Guests can browse menu and add to cart without registration
+- Guest checkout requires only name + phone, auto-creates account
+- After guest order, user is automatically logged in
+
+---
+Task ID: 7.3
+Agent: Main (via subagent)
+Task: Multiple payment methods E2E — cash, bonus, card, LiqPay
+
+Work Log:
+- Fixed cash/bonus payments to auto-succeed (status: 'succeeded' on creation)
+- Fixed double-deduction bug in loyalty bonus earning
+- Added min order amount validation for delivery orders
+- Added auto-confirm with prep time when branch.autoConfirm is true
+- Verified LiqPay integration (Apple Pay/Google Pay automatic)
+
+Stage Summary:
+- Cash and bonus payments now correctly auto-succeed
+- Min order amount enforced for delivery
+- Auto-confirm with estimated time calculation
+- Loyalty bonus bug fixed
+
+---
+Task ID: 7.4
+Agent: Main (via subagent)
+Task: Customer order notifications via WebSocket
+
+Work Log:
+- Created CustomerOrderNotifications component (renders nothing, side-effects only)
+- Listens for order:status_changed via existing WebSocket hook
+- Maps each status to localized i18n message with toast notifications
+- Integrated into page.tsx — tracks active order IDs, refreshes every 30s
+- Different toast styles: info for progress, success for completed, error for cancelled
+
+Stage Summary:
+- Customers see real-time toast notifications when their order status changes
+- Full localization support (uk/ru/en)
+- Tracks up to 10 active orders via WebSocket

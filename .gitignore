@@ -54,3 +54,4 @@ server.log
 /skills/.github/workflows/
 .github/workflows/ci.yml
 tool-results/
+agent-ctx/

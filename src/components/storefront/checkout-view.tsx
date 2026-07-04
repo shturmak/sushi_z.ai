@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useBrand, useAuth, API } from '@/lib/store'
+import { useGuestCart } from '@/lib/guest-cart'
 import { useT } from '@/i18n'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -65,7 +66,26 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
   const isAuthenticated = useAuth((s) => s.isAuthenticated)
   const primaryColor = brand?.primaryColor || '#e11d48'
 
-  const STEPS = [
+  // Guest support
+  const guestCart = useGuestCart()
+  const guestSubtotal = guestCart.items.reduce((s, i) => s + i.price * i.quantity, 0)
+
+  // Guest form fields
+  const [guestFirstName, setGuestFirstName] = useState('')
+  const [guestLastName, setGuestLastName] = useState('')
+  const [guestPhone, setGuestPhone] = useState('')
+  const [guestEmail, setGuestEmail] = useState('')
+  const [guestFormError, setGuestFormError] = useState('')
+
+  // For guests, steps are: type, address, payment, confirmation (no promo/bonus)
+  const isGuest = !isAuthenticated
+  const GUEST_STEPS = [
+    t('checkout.steps.0'),
+    t('checkout.steps.1'),
+    t('checkout.steps.3'),
+    t('checkout.steps.5'),
+  ] as const
+  const AUTH_STEPS = [
     t('checkout.steps.0'),
     t('checkout.steps.1'),
     t('checkout.steps.2'),
@@ -73,7 +93,7 @@ export default function CheckoutView({ onOrderCreated, onBack }: CheckoutViewPro
     t('checkout.steps.4'),
     t('checkout.steps.5'),
   ] as const
-
+  const STEPS = isGuest ? GUEST_STEPS : AUTH_STEPS
   const TOTAL_STEPS = STEPS.length
 
   const [step, setStep] = useState(0)
@@ -178,6 +198,9 @@ const [freeDeliveryPromo, setFreeDeliveryPromo] = useState(false)
     if (isAuthenticated) load()
   }, [isAuthenticated])
 
+  // For guests: subtotal comes from guest cart
+  const effectiveSubtotal = isGuest ? guestSubtotal : subtotal
+
   // ── Fetch delivery zones when branch changes (delivery mode) ──
   const selectedZone = deliveryZones.find((z) => z.id === selectedZoneId)
   const deliveryFee = orderType === 'delivery' && !freeDeliveryPromo ? (selectedZone?.deliveryFee ?? 0) : 0
@@ -218,7 +241,7 @@ const [freeDeliveryPromo, setFreeDeliveryPromo] = useState(false)
 
   // ── Derived values ─────────────────────────────────────
   const discount = promoDiscount
-  const total = Math.max(0, subtotal + deliveryFee - discount - bonusToUse)
+  const total = Math.max(0, effectiveSubtotal + deliveryFee - discount - bonusToUse)
 
   // ── Promo apply ────────────────────────────────────────
   async function handleApplyPromo() {
@@ -246,6 +269,24 @@ const [freeDeliveryPromo, setFreeDeliveryPromo] = useState(false)
 
   // ── Step validation ────────────────────────────────────
   function canProceed(): boolean {
+    if (isGuest) {
+      // Guest steps: 0=type, 1=address, 2=payment, 3=confirm
+      switch (step) {
+        case 1:
+          if (orderType === 'delivery') return street.trim().length > 0
+          return true
+        case 2:
+          return true
+        case 3:
+          return (
+            guestFirstName.trim().length > 0 &&
+            guestPhone.trim().length > 0
+          )
+        default:
+          return true
+      }
+    }
+    // Auth steps: 0=type, 1=address, 2=promo, 3=payment, 4=bonus, 5=confirm
     switch (step) {
       case 1:
         if (orderType === 'delivery') return street.trim().length > 0
@@ -268,6 +309,52 @@ const [freeDeliveryPromo, setFreeDeliveryPromo] = useState(false)
     setSubmitting(true)
     setSubmitError('')
 
+    if (isGuest) {
+      // Guest order submission
+      const payload: Record<string, any> = {
+        firstName: guestFirstName.trim(),
+        lastName: guestLastName.trim() || undefined,
+        phone: guestPhone.trim(),
+        email: guestEmail.trim() || undefined,
+        branchId: selectedBranchId,
+        type: orderType,
+        paymentMethod,
+        items: guestCart.items.map((i) => ({
+          productId: i.productId,
+          quantity: i.quantity,
+        })),
+        note: comment || undefined,
+      }
+
+      if (orderType === 'delivery') {
+        payload.addressData = { street, building, apartment, floor, entrance }
+      }
+
+      const { data, error } = await API.orders.guest(payload)
+      setSubmitting(false)
+
+      if (error) {
+        setSubmitError(error)
+        setGuestFormError(error)
+        return
+      }
+      if (data) {
+        // Auto-login with returned tokens
+        const resp = data as any
+        if (resp.user && resp.accessToken && resp.refreshToken) {
+          useAuth.getState().login({
+            user: resp.user,
+            accessToken: resp.accessToken,
+            refreshToken: resp.refreshToken,
+          })
+        }
+        guestCart.clearCart()
+        onOrderCreated()
+      }
+      return
+    }
+
+    // Authenticated order submission
     const orderPayload: Record<string, any> = {
       branchId: selectedBranchId,
       type: orderType,
@@ -524,8 +611,8 @@ const [freeDeliveryPromo, setFreeDeliveryPromo] = useState(false)
         </div>
       )}
 
-      {/* ── Step 2: Promo code ─────────────────────────── */}
-      {step === 2 && (
+      {/* ── Step 2: Promo code (auth only) ────────────────── */}
+      {!isGuest && step === 2 && (
         <div className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">{t('checkout.promoCode')}</label>
@@ -551,13 +638,13 @@ const [freeDeliveryPromo, setFreeDeliveryPromo] = useState(false)
         </div>
       )}
 
-      {/* ── Step 3: Payment ─────────────────────────────── */}
-      {step === 3 && (
+      {/* ── Step: Payment ──────────────────────────────── */}
+      {(isGuest ? step === 2 : step === 3) && (
         <div className="space-y-3">
           {[
             { value: 'card' as const, label: t('checkout.paymentCard'), icon: CreditCard },
             { value: 'cash' as const, label: t('checkout.paymentCash'), icon: Banknote },
-            { value: 'bonus' as const, label: t('checkout.paymentBonus'), icon: Gift },
+            ...(!isGuest ? [{ value: 'bonus' as const, label: t('checkout.paymentBonus'), icon: Gift }] : []),
           ].map(({ value, label, icon: Icon }) => (
             <button
               key={value}
@@ -580,8 +667,8 @@ const [freeDeliveryPromo, setFreeDeliveryPromo] = useState(false)
         </div>
       )}
 
-      {/* ── Step 4: Bonus usage ─────────────────────────── */}
-      {step === 4 && (
+      {/* ── Step: Bonus usage (auth only) ────────────────── */}
+      {!isGuest && step === 4 && (
         <div className="space-y-4">
           <Card>
             <CardContent className="p-4 space-y-3">
@@ -621,8 +708,8 @@ const [freeDeliveryPromo, setFreeDeliveryPromo] = useState(false)
         </div>
       )}
 
-      {/* ── Step 5: Summary ─────────────────────────────── */}
-      {step === 5 && (
+      {/* ── Step: Summary / Confirmation ──────────────────── */}
+      {(isGuest ? step === 3 : step === 5) && (
         <div className="space-y-4">
           <Card>
             <CardHeader className="pb-2">
@@ -656,19 +743,33 @@ const [freeDeliveryPromo, setFreeDeliveryPromo] = useState(false)
 
               {/* Items */}
               <div className="space-y-2">
-                {cartItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex justify-between text-sm"
-                  >
-                    <span className="text-muted-foreground">
-                      {item.product.name} × {item.quantity}
-                    </span>
-                    <span className="font-medium">
-                      {Math.round(item.totalPrice)} ₴
-                    </span>
-                  </div>
-                ))}
+                {isGuest
+                  ? guestCart.items.map((item) => (
+                      <div
+                        key={item.productId}
+                        className="flex justify-between text-sm"
+                      >
+                        <span className="text-muted-foreground">
+                          {item.name} × {item.quantity}
+                        </span>
+                        <span className="font-medium">
+                          {Math.round(item.price * item.quantity)} ₴
+                        </span>
+                      </div>
+                    ))
+                  : cartItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex justify-between text-sm"
+                      >
+                        <span className="text-muted-foreground">
+                          {item.product.name} × {item.quantity}
+                        </span>
+                        <span className="font-medium">
+                          {Math.round(item.totalPrice)} ₴
+                        </span>
+                      </div>
+                    ))}
               </div>
 
               <Separator />
@@ -676,7 +777,7 @@ const [freeDeliveryPromo, setFreeDeliveryPromo] = useState(false)
               {/* Totals */}
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('common.subtotal')}</span>
-                <span>{Math.round(subtotal)} ₴</span>
+                <span>{Math.round(effectiveSubtotal)} ₴</span>
               </div>
               {orderType === 'delivery' && (
                 <div className="flex justify-between text-sm">
@@ -714,9 +815,7 @@ const [freeDeliveryPromo, setFreeDeliveryPromo] = useState(false)
                 <span className="font-medium">
                   {paymentMethod === 'card'
                     ? t('checkout.paymentCard')
-                    : paymentMethod === 'cash'
-                      ? t('checkout.paymentCash')
-                      : t('checkout.paymentBonus')}
+                    : t('checkout.paymentCash')}
                 </span>
               </div>
 
@@ -725,6 +824,56 @@ const [freeDeliveryPromo, setFreeDeliveryPromo] = useState(false)
               )}
             </CardContent>
           </Card>
+
+          {/* Guest contact form */}
+          {isGuest && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">{t('auth.guestTitle')}</CardTitle>
+                <p className="text-xs text-muted-foreground">{t('auth.guestDesc')}</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {guestFormError && (
+                  <p className="text-sm text-destructive">{guestFormError}</p>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">{t('auth.firstName')} *</label>
+                    <Input
+                      placeholder={t('auth.firstNamePlaceholder')}
+                      value={guestFirstName}
+                      onChange={(e) => { setGuestFirstName(e.target.value); setGuestFormError('') }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">{t('auth.lastName')}</label>
+                    <Input
+                      placeholder={t('auth.lastNamePlaceholder')}
+                      value={guestLastName}
+                      onChange={(e) => setGuestLastName(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{t('auth.phone')} *</label>
+                  <Input
+                    placeholder={t('auth.phonePlaceholder')}
+                    value={guestPhone}
+                    onChange={(e) => { setGuestPhone(e.target.value); setGuestFormError('') }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{t('auth.email')}</label>
+                  <Input
+                    placeholder={t('auth.emailPlaceholder')}
+                    type="email"
+                    value={guestEmail}
+                    onChange={(e) => setGuestEmail(e.target.value)}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 

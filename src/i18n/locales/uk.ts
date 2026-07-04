@@ -58,6 +58,10 @@ const uk = {
     lastNamePlaceholder: 'Петренко',
     loginButton: 'Увійти',
     registerButton: 'Зареєструватися',
+    guestCheckout: 'Замовити без реєстрації',
+    guestTitle: 'Швидке замовлення',
+    guestDesc: 'Вкажіть контактні дані для оформлення замовлення',
+    guestSuccess: 'Замовлення створено! Ваші дані збережено для наступних замовлень.',
   },
 
   menu: {
@@ -452,6 +456,12 @@ const uk = {
   notifications: {
     newOrder: 'Нове замовлення #{number}',
     orderUpdated: 'Замовлення #{number} — {status}',
+    orderConfirmed: 'Замовлення #{number} підтверджено',
+    orderCooking: 'Ваше замовлення #{number} готується',
+    orderReady: 'Замовлення #{number} готове!',
+    orderDelivering: 'Замовлення #{number} в доставці',
+    orderCompleted: 'Замовлення #{number} виконано. Смачного!',
+    orderCancelled: 'Замовлення #{number} скасовано',
   },
 
   notFound: {

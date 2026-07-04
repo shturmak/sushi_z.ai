@@ -60,6 +60,10 @@ const en: Messages = {
     lastNamePlaceholder: 'Doe',
     loginButton: 'Sign in',
     registerButton: 'Sign up',
+    guestCheckout: 'Order without registration',
+    guestTitle: 'Quick order',
+    guestDesc: 'Provide contact details to place your order',
+    guestSuccess: 'Order created! Your details are saved for future orders.',
   },
 
   menu: {
@@ -452,6 +456,12 @@ const en: Messages = {
   notifications: {
     newOrder: 'New order #{number}',
     orderUpdated: 'Order #{number} — {status}',
+    orderConfirmed: 'Order #{number} confirmed',
+    orderCooking: 'Your order #{number} is being prepared',
+    orderReady: 'Order #{number} is ready!',
+    orderDelivering: 'Order #{number} is out for delivery',
+    orderCompleted: 'Order #{number} completed. Enjoy your meal!',
+    orderCancelled: 'Order #{number} has been cancelled',
   },
 
   notFound: {

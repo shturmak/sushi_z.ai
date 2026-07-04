@@ -60,6 +60,10 @@ const ru: Messages = {
     lastNamePlaceholder: 'Петренко',
     loginButton: 'Войти',
     registerButton: 'Зарегистрироваться',
+    guestCheckout: 'Заказать без регистрации',
+    guestTitle: 'Быстрый заказ',
+    guestDesc: 'Укажите контактные данные для оформления заказа',
+    guestSuccess: 'Заказ создан! Ваши данные сохранены для следующих заказов.',
   },
 
   menu: {
@@ -452,6 +456,12 @@ const ru: Messages = {
   notifications: {
     newOrder: 'Новый заказ #{number}',
     orderUpdated: 'Заказ #{number} — {status}',
+    orderConfirmed: 'Заказ #{number} подтвержден',
+    orderCooking: 'Ваш заказ #{number} готовится',
+    orderReady: 'Заказ #{number} готов!',
+    orderDelivering: 'Заказ #{number} в доставке',
+    orderCompleted: 'Заказ #{number} выполнен. Приятного аппетита!',
+    orderCancelled: 'Заказ #{number} отменён',
   },
 
   notFound: {

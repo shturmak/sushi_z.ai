@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useBrand, useAuth, API } from '@/lib/store'
+import { useGuestCart } from '@/lib/guest-cart'
 import { useT } from '@/i18n'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -949,8 +950,26 @@ export default function MenuView({ onCheckout, onCartCountChange }: MenuViewProp
   }, [isAuthenticated, onCartCountChange])
 
   // ── Add to cart ────────────────────────────────────────
+  const guestCart = useGuestCart()
+  const guestCount = guestCart.items.reduce((s, i) => s + i.quantity, 0)
+  const guestSubtotal = guestCart.items.reduce((s, i) => s + i.price * i.quantity, 0)
+
+  // Sync guest cart count to parent on mount and changes
+  useEffect(() => {
+    if (!isAuthenticated) {
+      onCartCountChange(guestCount)
+    }
+  }, [isAuthenticated, guestCount, onCartCountChange])
+
   async function handleAddToCart(product: Product) {
-    if (!isAuthenticated || addingItemId) return
+    if (addingItemId) return
+
+    if (!isAuthenticated) {
+      // Guest: add to localStorage cart
+      guestCart.addItem({ id: product.id, name: product.name, price: product.price })
+      return
+    }
+
     setAddingItemId(product.id)
     const { data } = await API.cart.addItem({
       productId: product.id,
@@ -967,7 +986,7 @@ export default function MenuView({ onCheckout, onCartCountChange }: MenuViewProp
     setAddingItemId(null)
   }
 
-  // ── Update item quantity ───────────────────────────────
+  // ── Update item quantity (authenticated) ────────────────
   async function handleUpdateQuantity(itemId: string, newQty: number) {
     if (newQty <= 0) {
       await API.cart.removeItem(itemId)
@@ -980,6 +999,11 @@ export default function MenuView({ onCheckout, onCartCountChange }: MenuViewProp
       setCartSubtotal(data.subtotal || 0)
       onCartCountChange(data.totalItems || 0)
     }
+  }
+
+  // ── Update guest item quantity ─────────────────────────
+  function handleGuestUpdateQuantity(productId: string, newQty: number) {
+    guestCart.updateQuantity(productId, newQty)
   }
 
   return (
@@ -1025,7 +1049,7 @@ export default function MenuView({ onCheckout, onCartCountChange }: MenuViewProp
             </SheetDescription>
           </SheetHeader>
 
-          {cart && cart.items.length > 0 ? (
+          {isAuthenticated && cart && cart.items.length > 0 ? (
             <>
               <ScrollArea className="flex-1 -mx-4 px-4">
                 <div className="space-y-4 py-2">
@@ -1096,6 +1120,77 @@ export default function MenuView({ onCheckout, onCartCountChange }: MenuViewProp
                 </Button>
               </SheetFooter>
             </>
+          ) : !isAuthenticated && guestCart.items.length > 0 ? (
+            <>
+              <ScrollArea className="flex-1 -mx-4 px-4">
+                <div className="space-y-4 py-2">
+                  {guestCart.items.map((item) => (
+                    <div key={item.productId} className="flex gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">
+                          {item.name}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {Math.round(item.price * item.quantity)} ₴
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="size-7"
+                          onClick={() =>
+                            handleGuestUpdateQuantity(item.productId, item.quantity - 1)
+                          }
+                        >
+                          <Minus className="size-3" />
+                        </Button>
+                        <span className="w-8 text-center text-sm font-medium">
+                          {item.quantity}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="size-7"
+                          onClick={() =>
+                            handleGuestUpdateQuantity(item.productId, item.quantity + 1)
+                          }
+                        >
+                          <Plus className="size-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 text-destructive hover:text-destructive"
+                          onClick={() => guestCart.removeItem(item.productId)}
+                        >
+                          <Trash2 className="size-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+
+              <Separator />
+
+              <SheetFooter className="flex-col gap-3 pt-2">
+                <div className="flex w-full items-center justify-between text-lg font-bold">
+                  <span>{t('common.total')}</span>
+                  <span>{Math.round(guestSubtotal)} ₴</span>
+                </div>
+                <Button
+                  className="w-full text-white"
+                  style={{ backgroundColor: primaryColor }}
+                  onClick={() => {
+                    setCartOpen(false)
+                    onCheckout()
+                  }}
+                >
+                  {t('cart.checkout')}
+                </Button>
+              </SheetFooter>
+            </>
           ) : (
             <div className="flex flex-1 items-center justify-center text-muted-foreground">
               <div className="text-center">
@@ -1119,6 +1214,28 @@ export default function MenuView({ onCheckout, onCartCountChange }: MenuViewProp
             </div>
             <div className="flex items-center gap-4">
               <span className="font-bold">{Math.round(cartSubtotal)} ₴</span>
+              <Button
+                className="text-white"
+                style={{ backgroundColor: primaryColor }}
+                onClick={() => setCartOpen(true)}
+              >
+                {t('cart.title')}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {!isAuthenticated && guestCount > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-30 border-t bg-background/95 backdrop-blur p-4">
+          <div className="mx-auto flex max-w-5xl items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="size-5" />
+              <span className="text-sm font-medium">
+                {guestCount} {pluralizeItems(t, guestCount)}
+              </span>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="font-bold">{Math.round(guestSubtotal)} ₴</span>
               <Button
                 className="text-white"
                 style={{ backgroundColor: primaryColor }}

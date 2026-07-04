@@ -61,6 +61,7 @@ export async function createOrderFromCart(params: CreateOrderParams) {
   // 3. Delivery fee
   let deliveryFee = 0;
   let addressSnapshot: string | null = null;
+  let matchingZone: { estimatedMinutes: number } | undefined;
 
   if (params.type === OrderType.delivery) {
     if (!params.addressId) {
@@ -73,8 +74,14 @@ export async function createOrderFromCart(params: CreateOrderParams) {
     addressSnapshot = JSON.stringify(address);
 
     const zones = await db.deliveryZone.findMany({ where: { branchId: params.branchId, isActive: true } });
-    const matchingZone = zones.filter(z => subtotal >= z.minOrder).sort((a, b) => b.minOrder - a.minOrder)[0];
+    matchingZone = zones.filter(z => subtotal >= z.minOrder).sort((a, b) => b.minOrder - a.minOrder)[0];
     deliveryFee = matchingZone?.deliveryFee ?? 50;
+
+    // Check minimum order amount for delivery
+    const branch = await db.branch.findUnique({ where: { id: params.branchId } });
+    if (branch?.minOrderAmount && subtotal < branch.minOrderAmount) {
+      return { success: false as const, error: { code: 'MIN_ORDER_AMOUNT', message: `Minimum order amount is ${branch.minOrderAmount}₴` } };
+    }
   }
 
   // 4. Validate promotion
@@ -137,8 +144,10 @@ export async function createOrderFromCart(params: CreateOrderParams) {
       });
     }
 
+    // Cash and bonus payments auto-succeed (collected on delivery / deducted immediately)
+    const paymentStatus = (params.paymentMethod === 'cash' || params.paymentMethod === 'bonus') ? 'succeeded' as const : 'pending' as const;
     await tx.payment.create({
-      data: { orderId: newOrder.id, method: params.paymentMethod, status: 'pending' as const, amount: total },
+      data: { orderId: newOrder.id, method: params.paymentMethod, status: paymentStatus, amount: total },
     });
 
     // Deduct bonus
@@ -155,15 +164,15 @@ export async function createOrderFromCart(params: CreateOrderParams) {
     }
 
     // Earn bonus (5%)
-    const loy = await tx.loyaltyAccount.findUnique({ where: { userId_brandId: { userId: params.userId, brandId: cart.brandId } } });
-    if (loy) {
+    const earnLoy = await tx.loyaltyAccount.findUnique({ where: { userId_brandId: { userId: params.userId, brandId: cart.brandId } } });
+    if (earnLoy) {
       const earned = Math.round(total * 0.05);
-      const newLifetime = loy.lifetime + total;
-      const newBal = loy.balance - bonusUsed + earned;
+      const newLifetime = earnLoy.lifetime + total;
+      const newBal = earnLoy.balance + earned; // bonusUsed already deducted above in the same tx
       const newTier = newLifetime >= 10000 ? 'gold' : newLifetime >= 3000 ? 'silver' : 'bronze';
       await tx.loyaltyAccount.update({ where: { userId_brandId: { userId: params.userId, brandId: cart.brandId } }, data: { balance: newBal, lifetime: newLifetime, tier: newTier } });
       await tx.loyaltyTransaction.create({
-        data: { accountId: loy.id, type: 'earned' as const, amount: earned, balanceAfter: newBal,
+        data: { accountId: earnLoy.id, type: 'earned' as const, amount: earned, balanceAfter: newBal,
           description: `Бонуси за ${orderNumber}`, relatedOrderId: newOrder.id },
       });
     }
@@ -174,6 +183,23 @@ export async function createOrderFromCart(params: CreateOrderParams) {
 
     return newOrder;
   });
+
+  // Auto-confirm orders when branch has autoConfirm enabled
+  const branch = await db.branch.findUnique({ where: { id: params.branchId } });
+  if (branch?.autoConfirm) {
+    const estMinutes = params.type === OrderType.delivery
+      ? (matchingZone?.estimatedMinutes ?? 30) + (branch.prepTimeMinutes ?? 30)
+      : branch.prepTimeMinutes ?? 30;
+    await db.order.update({
+      where: { id: order.id },
+      data: {
+        status: 'confirmed' as const,
+        confirmedAt: new Date(),
+        estimatedMinutes: estMinutes,
+      },
+    });
+    console.log(`[ORDER] Auto-confirmed ${orderNumber}, estimated: ${estMinutes}min`);
+  }
 
   console.log(`[ORDER] Created ${orderNumber} for user ${params.userId}, total: ${total} UAH`);
   return {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth, useBrand, API } from '@/lib/store'
 import type { BrandInfo } from '@/lib/store'
 import { useT } from '@/i18n'
@@ -11,6 +11,7 @@ import MenuView from '@/components/storefront/menu-view'
 import CheckoutView from '@/components/storefront/checkout-view'
 import OrdersView from '@/components/storefront/orders-view'
 import ProfileView from '@/components/storefront/profile-view'
+import { CustomerOrderNotifications } from '@/components/storefront/customer-order-notifications'
 import { UtensilsCrossed, Loader2 } from 'lucide-react'
 
 type ViewType = 'menu' | 'checkout' | 'orders' | 'profile'
@@ -26,6 +27,8 @@ export default function StorefrontPage() {
   const [authOpen, setAuthOpen] = useState(false)
   const [cartCount, setCartCount] = useState(0)
   const [initializing, setInitializing] = useState(true)
+  const [activeOrderIds, setActiveOrderIds] = useState<string[]>([])
+  const activeStatuses = useRef(['new', 'confirmed', 'cooking', 'ready', 'delivering'])
 
   // ── Hydrate on mount ──────────────────────────────────
   useEffect(() => {
@@ -73,6 +76,31 @@ export default function StorefrontPage() {
     }
     init()
     }, [])
+
+  // ── Fetch active order IDs for WS notifications ──
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    const fetchActiveOrders = async () => {
+      try {
+        const { data } = await API.orders.list()
+        if (!data) return
+        const resp = data as any
+        const orders = resp.data || resp.orders || resp
+        const ids = (Array.isArray(orders) ? orders : [])
+          .filter((o: any) => activeStatuses.current.includes(o.status))
+          .map((o: any) => o.id)
+          .slice(0, 10)
+        setActiveOrderIds(ids)
+      } catch {
+        // Silently fail — notifications are non-critical
+      }
+    }
+
+    fetchActiveOrders()
+    const interval = setInterval(fetchActiveOrders, 30_000)
+    return () => clearInterval(interval)
+  }, [isAuthenticated])
 
   // ── Handlers ──────────────────────────────────────────
   const handleCartCountChange = useCallback((count: number) => {
@@ -140,6 +168,11 @@ export default function StorefrontPage() {
         {view === 'orders' && <OrdersView onNavigate={handleNavigate} />}
         {view === 'profile' && <ProfileView />}
       </main>
+
+      {/* Customer order notifications via WebSocket */}
+      {isAuthenticated && activeOrderIds.length > 0 && (
+        <CustomerOrderNotifications orderIds={activeOrderIds} />
+      )}
 
       {/* Auth dialog */}
       <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />
